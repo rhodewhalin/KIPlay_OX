@@ -528,21 +528,29 @@ function schedule(ms, fn) {
   phaseTimer = setTimeout(fn, ms);
 }
 
-function pickQuestions() {
+function pickQuestions(count = CONFIG.questionCount) {
   const pool = BANK.pool;
   const byDiff = (d) => pool.filter((q) => q.difficulty === d).sort(() => Math.random() - 0.5);
   const easy = byDiff('easy');
   const medium = byDiff('medium');
   const hard = byDiff('hard');
 
-  // PRD 5.3 난이도 사다리: 쉬움 → 쉬움~중간 → 중간 → 어려움 → 어려움
-  const ladder = [easy[0], easy[1], medium[0], hard[0], hard[1]].filter(Boolean);
-  while (ladder.length < CONFIG.questionCount) {
+  // PRD 5.3 난이도 사다리를 비율로 일반화: 앞 40% 쉬움 → 20% 보통 → 뒤 40% 어려움.
+  // 기본 5문항이면 2·1·2 — 원래 사다리 [쉬움,쉬움,보통,어려움,어려움]과 같다.
+  const nEasy = Math.round(count * 0.4);
+  const nHard = Math.round(count * 0.4);
+  const nMedium = Math.max(0, count - nEasy - nHard);
+  const ladder = [
+    ...easy.slice(0, nEasy),
+    ...medium.slice(0, nMedium),
+    ...hard.slice(0, nHard),
+  ];
+  while (ladder.length < count) {
     const rest = pool.filter((q) => !ladder.includes(q));
     if (!rest.length) break;
     ladder.push(rest[Math.floor(Math.random() * rest.length)]);
   }
-  return ladder.slice(0, CONFIG.questionCount);
+  return ladder.slice(0, count);
 }
 
 function startGame(lobbyMs, opts = {}) {
@@ -550,7 +558,7 @@ function startGame(lobbyMs, opts = {}) {
   game.demo = !!opts.demo;
   if (!game.demo) clearBots(); // 실전 회차에 체험용 봇이 섞이지 않게 한다
   game.round += 1;
-  game.questions = pickQuestions();
+  game.questions = pickQuestions(opts.questionCount);
   game.suddenQ = BANK.sudden[Math.floor(Math.random() * BANK.sudden.length)];
   game.qIndex = -1;
   game.crowd = [];
@@ -938,6 +946,7 @@ async function handler(req, res) {
       spectators: game.spectators.size,
       alive: alivePlayers().length,
       tallyFrom: CONFIG.tallyVisibleFrom,
+      bank: { pool: BANK.pool.length, sudden: BANK.sudden.length, roster: ROSTER.size },
       uptimeSec: Math.round(process.uptime()),
       rssMB: +(m.rss / 1048576).toFixed(1),
       heapMB: +(m.heapUsed / 1048576).toFixed(1),
@@ -1073,9 +1082,16 @@ async function handler(req, res) {
     const action = p.slice('/api/admin/'.length);
 
     if (action === 'start') {
-      startGame(Number(body.lobbySec) > 0 ? Number(body.lobbySec) * 1000 : CONFIG.lobbyMs);
+      // 문항 수는 5~10만 허용. 범위 밖(미지정 포함)이면 기본 사다리(5문항).
+      const qc = Math.round(Number(body.questionCount));
+      startGame(
+        Number(body.lobbySec) > 0 ? Number(body.lobbySec) * 1000 : CONFIG.lobbyMs,
+        { questionCount: qc >= 5 && qc <= 10 ? qc : undefined },
+      );
       return sendJson(res, 200, { ok: true });
     }
+    // 콘솔 입장 게이트. 키 검사는 위에서 이미 끝났으므로 도달 = 유효한 키.
+    if (action === 'verify') return sendJson(res, 200, { ok: true });
     if (action === 'next') { forceNext(); return sendJson(res, 200, { ok: true }); }
     if (action === 'reset') { resetGame(); return sendJson(res, 200, { ok: true }); }
     if (action === 'reload') {
