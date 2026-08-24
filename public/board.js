@@ -131,10 +131,7 @@ function stopLoop() { if (rafId) cancelAnimationFrame(rafId); rafId = null; }
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { stopLoop(); if (stage) stage.stop(); Music.stopAll(); }
-  else {
-    startLoop(); if (stage) stage.start();
-    if (snap && (snap.phase === 'idle' || snap.phase === 'lobby')) Music.lobby(true);
-  }
+  else { startLoop(); if (stage) stage.start(); }
 });
 
 // ─────────────────────────────────────────── 렌더
@@ -304,7 +301,6 @@ function render(s) {
       $('b-center-list').hidden = true;
       lastQIndex = -1;
       Music.stopCrown();
-      Music.lobby(true);
       break;
 
     case 'lobby':
@@ -319,12 +315,10 @@ function render(s) {
       endingDone = false;   // 다음 회차의 엔딩을 위해 되돌린다
       if (endingCard) endingCard.finish();
       Music.stopCrown();
-      Music.lobby(true);
       break;
 
     case 'question':
       showCenter(false);
-      Music.lobby(false);   // 게임이 시작됐다. 로고송 예약을 멈춘다.
       $('b-split').hidden = false;
       $('b-question').textContent = s.question ? s.question.text : '';
       $('b-drop').textContent = '';
@@ -424,6 +418,9 @@ function connect() {
 
   es.addEventListener('state', (e) => render(JSON.parse(e.data)));
 
+  // 프리쇼(월 12:50~12:55) — 서버 큐에 맞춰 폰들과 같은 순간에 로고송
+  es.addEventListener('jingle', () => Music.jingle());
+
   es.addEventListener('tally', (e) => {
     const t = JSON.parse(e.data);
     if (!snap || snap.phase !== 'question') return;
@@ -451,9 +448,8 @@ Music.autoJingle(1000);
 $('audio-go').addEventListener('click', () => {
   audioReady = Sfx.unlock();
   Music.enable();
-  // 게이트를 누르기 전에 이미 대기 상태가 와 있었을 수 있다. idle에서는 새 상태
-  // 이벤트가 오지 않으므로, 여기서 직접 현재 위상에 맞춰 시동을 건다.
-  if (snap && (snap.phase === 'idle' || snap.phase === 'lobby')) Music.lobby(true);
+  // 접속 1회 원칙 — 준비 완료 순간에 개장 로고송을 한 차례. 이후는 서버 큐가 튼다.
+  if (snap && (snap.phase === 'idle' || snap.phase === 'lobby')) Music.jingle();
   Sfx.gong({ gain: 0.35 });
   setTimeout(() => Sfx.say('전광판 준비 완료.'), 700);
   $('audio-gate').hidden = true;

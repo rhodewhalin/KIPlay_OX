@@ -305,6 +305,8 @@ function render(s) {
   lastPhase = s.phase;
   applyArmed(s);
 
+  renderNextGame(s);
+
   switch (s.phase) {
     case 'idle':
       setScreen('lobby');
@@ -313,7 +315,7 @@ function render(s) {
 
     case 'lobby':
       setScreen('lobby');
-      if (s.demo) { Music.stopCrown(); Music.lobby(true); } else Music.lobby(false);
+      if (s.demo) Music.stopCrown();
       $('lobby-countdown').textContent = fmtClock(s.phaseEndsAt - now());
       lastQIndex = -1;
       endingDone = false;   // 다음 회차의 엔딩을 위해 되돌린다
@@ -322,7 +324,6 @@ function render(s) {
       break;
 
     case 'question': {
-      Music.lobby(false);
       renderTally(s);
       $('q-index').textContent = pad2(s.qIndex + 1);
       $('q-total').textContent = pad2(s.qTotal);
@@ -633,6 +634,9 @@ function connect() {
 
   es.addEventListener('revive', () => Sfx.warn());
 
+  // 프리쇼(월 12:50~12:55) — 서버 큐에 맞춰 전원이 같은 순간에 로고송을 튼다
+  es.addEventListener('jingle', () => Music.jingle());
+
   es.addEventListener('kicked', (e) => {
     es.close();
     state.es = null;
@@ -690,6 +694,26 @@ const GREETINGS = [
   (n) => `환영합니다 ${n}님. 소문난 실력, 오늘 보여주시죠.`,
   (n) => `${n}님! 12시 55분의 주인공이 되실 준비 되셨나요?`,
 ];
+
+/**
+ * 다음 정기 회차 안내. 대기 화면에 "다음 게임은 8월 31일 (월) 12:55에 시작됩니다"를 띄운다.
+ * 서버가 준 nextGameAt(KST 매주 월 12:55)을 그대로 렌더링만 한다. 체험 중에는 숨긴다.
+ */
+function renderNextGame(s) {
+  const el = $('next-game');
+  if (!el) return;
+  const show = !s.demo && (s.phase === 'idle' || s.phase === 'lobby') && s.nextGameAt;
+  if (!show) { el.hidden = true; return; }
+  const d = new Date(s.nextGameAt);
+  const date = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'short',
+  }).format(d);
+  const time = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(d);
+  el.textContent = `다음 게임은 ${date} ${time}에 시작됩니다. 늦지 않게 입장해 주세요.`;
+  el.hidden = false;
+}
 
 function greet(name) {
   const line = GREETINGS[Math.floor(Math.random() * GREETINGS.length)](name);
@@ -786,7 +810,7 @@ $('rs-again').addEventListener('click', () => setScreen('lobby'));
 
 // ═══════════════════════════════════════════════ 체험 모드
 
-const demoOpts = { role: 'new', bots: 80, lobby: 3 };
+const demoOpts = { role: 'new', bots: 80 };
 
 /** 역할별 시연용 사번 (5자리). 명부에 등록된 사번을 그대로 쓴다. */
 function demoEmpId(role) {
@@ -857,7 +881,14 @@ $('lobby-demo').addEventListener('click', () => {
 async function startDemo() {
   $('demo-start').disabled = true;
   $('demo-error').textContent = '';
-  Music.jingle();   // 체험도 개장 로고송으로 시작한다. 1분 가드는 여기선 무시.
+
+  // 체험 대기실 = 로고송의 남은 시간. 곡이 끝나는 순간 1번 문항이 나간다.
+  // 옵션 화면부터 흐르던 곡이면 그대로 타고, 이미 끝났으면 처음부터 다시 튼다.
+  // 재생 자체가 막히면(자동재생 차단 등) 침묵 19초를 세우지 말고 3초로 바로 간다.
+  let lobbySec = Music.jingleRemaining();
+  if (lobbySec == null) lobbySec = await Music.jingleStart();
+  if (lobbySec == null) lobbySec = 3;
+  lobbySec = Math.max(2, Math.ceil(lobbySec));
 
   try {
     // 아직 입장하지 않았다면 고른 역할로 먼저 입장한다
@@ -871,7 +902,7 @@ async function startDemo() {
     }
 
     const { ok, data } = await post('/api/demo/start', {
-      token: state.token, bots: demoOpts.bots, lobbySec: demoOpts.lobby,
+      token: state.token, bots: demoOpts.bots, lobbySec,
     });
     if (!ok) throw new Error(data.error || '시작할 수 없습니다.');
     Sfx.select();

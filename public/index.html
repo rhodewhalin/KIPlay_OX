@@ -60,19 +60,11 @@
       </div>
     </div>
 
-    <div class="opt">
-      <div class="label">대기실</div>
-      <div class="chips">
-        <button class="chip" type="button" data-lobby="3" aria-pressed="true">3초 · 바로 시작</button>
-        <button class="chip" type="button" data-lobby="15" aria-pressed="false">15초</button>
-        <button class="chip" type="button" data-lobby="60" aria-pressed="false">60초</button>
-      </div>
-    </div>
-
     <div class="demo-actions">
       <button class="btn btn-primary" id="demo-start">체험 시작</button>
       <button class="btn" id="demo-back">뒤로</button>
     </div>
+    <p class="hint" style="text-align:center">로고송이 끝나는 순간 첫 문항이 나갑니다 — 남은 시간이 곧 대기실입니다.</p>
     <p class="error" id="demo-error" role="alert"></p>
   </div>
 </section>
@@ -80,6 +72,7 @@
 <!-- ══════════════════════════════════ 대기실 -->
 <section class="screen" id="s-lobby">
   <p class="greeting" id="lobby-greet" role="status" aria-live="polite"></p>
+  <p class="hint" id="next-game" hidden style="text-align:center"></p>
   <div class="label" style="text-align:center">시작까지</div>
 
   <div class="dial">

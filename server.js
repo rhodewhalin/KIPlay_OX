@@ -55,6 +55,18 @@ const CONFIG = {
   heartbeatMs: 15000, // SSE keep-alive
 
   /**
+   * 정기 회차 — 매주 월요일 12:55 KST에 1번 문항이 나간다.
+   * 5분 전(12:50)에 서버가 스스로 대기실을 열고, 그 사이 프리쇼로
+   * 접속한 모든 화면에 1분에 한 번 로고송 큐를 공통 송출한다.
+   * 개별 폰이 제멋대로 트는 게 아니라 전원이 같은 순간에 울리는 것이 요점.
+   * 개발·e2e 중에는 AUTO_START=0 으로 끌 수 있다.
+   */
+  gameDow: Number(process.env.GAME_DOW ?? 1),      // 0=일 … 1=월
+  gameHour: Number(process.env.GAME_HOUR ?? 12),   // KST
+  gameMinute: Number(process.env.GAME_MINUTE ?? 55),
+  preShowMs: 5 * 60000,
+
+  /**
    * 생존자가 이 수 미만이면 실시간 O/X 집계를 보내지 않는다.
    * 초반은 군중을 보고 눈치를 보지만 후반은 혼자 판단해야 한다.
    * 반드시 서버에서 잘라야 한다. 클라이언트에서만 숨기면 개발자도구로 그대로 보인다.
@@ -439,6 +451,7 @@ function publicState() {
     named: namedPayload(),
     phaseEndsAt: game.phaseEndsAt,
     serverNow: Date.now(),
+    nextGameAt: nextGameAt(),
     joined: game.players.size,
     alive: alivePlayers().length,
     qIndex: game.qIndex,
@@ -837,6 +850,56 @@ function resetGame() {
   for (const p of game.players.values()) resetPlayerForRound(p);
   pushState();
 }
+
+// ---------------------------------------------------------------- 정기 회차
+
+const KST_MS = 9 * 3600e3; // Render는 UTC로 돈다. KST는 DST가 없어 고정 오프셋이면 충분하다.
+
+/** 다음 정기 회차(1번 문항이 나가는 시각)의 epoch ms. */
+function nextGameAt(now = Date.now()) {
+  const k = new Date(now + KST_MS); // UTC 게터로 KST를 읽는다
+  const days = (CONFIG.gameDow - k.getUTCDay() + 7) % 7;
+  let at = Date.UTC(
+    k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate() + days,
+    CONFIG.gameHour, CONFIG.gameMinute, 0, 0,
+  ) - KST_MS;
+  if (at <= now) at += 7 * 86400e3;
+  return at;
+}
+
+/** 참여자·관전자 전원에게 같은 이벤트를 쏜다 (프리쇼 로고송 큐 등). */
+function broadcastEvent(event, data) {
+  for (const p of game.players.values()) if (p.res) sseSend(p.res, event, data);
+  for (const res of game.spectators) sseSend(res, event, data);
+}
+
+let autoOpenedFor = 0;   // 이 회차를 이미 열었는지 (재시작 루프 방지)
+let lastJingleMin = -1;
+
+setInterval(() => {
+  if (process.env.AUTO_START === '0') return;
+  const now = Date.now();
+  const gameAt = nextGameAt(now);
+  const preAt = gameAt - CONFIG.preShowMs;
+  if (now < preAt || now >= gameAt) return; // 프리쇼 창(12:50~12:55) 밖
+
+  // 12:50 — 대기실을 연다. 체험 회차는 밀어내고, 이미 도는 실전 회차는 건드리지 않는다.
+  if (autoOpenedFor !== gameAt) {
+    const realBusy = !game.demo && game.phase !== 'idle' && game.phase !== 'result';
+    if (!realBusy) {
+      autoOpenedFor = gameAt;
+      log(`정기 회차 자동 개장 — ${Math.round((gameAt - now) / 1000)}초 뒤 1번 문항`);
+      startGame(Math.max(3000, gameAt - now));
+    }
+  }
+
+  // 프리쇼 동안 1분에 한 번, 전원이 같은 순간에 로고송
+  const min = Math.floor(now / 60000);
+  if (min !== lastJingleMin) {
+    lastJingleMin = min;
+    broadcastEvent('jingle', { at: now });
+  }
+}, 1000);
 
 function forceNext() {
   switch (game.phase) {

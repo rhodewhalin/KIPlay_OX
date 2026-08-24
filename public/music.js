@@ -5,13 +5,15 @@
  *
  * 수노(Suno)에서 유료 제작한 두 곡을 튼다.
  *
- *   kipi-esports.wav (19초)   개장 로고송. 게임이 시작되기 전 대기 구간에
- *                             1분에 한 번씩 울린다. 12시 55분이 다가온다는 신호다.
+ *   kipi-esports.wav (19초)   개장 로고송. 접속하면 한 차례 울린다.
+ *                             매주 월요일 12:50~12:55 프리쇼에는 서버가 SSE로
+ *                             큐를 쏘고, 접속한 모든 화면이 같은 순간에 튼다 ——
+ *                             개별 반복이 아니라 회장 전체가 하나의 스피커다.
  *   crown-of-valor.wav (102초) 우승곡. 챔피언이 확정되는 순간 곧바로 튼다.
  *                             곡의 좋은 부분을 기다리게 하지 않는 것이 요점이다.
  *
  * 브라우저는 사용자 제스처 없이 소리를 못 낸다. enable()이 그 제스처 자리에서
- * 불려야 하고(전광판의 '준비 완료', 체험 시작 버튼), 그전의 재생 요청은 무시된다.
+ * 불려야 하고(전광판의 '준비 완료', 입장·체험 버튼), 그전의 재생 요청은 무시된다.
  * 재생 실패는 전부 조용히 삼킨다 —— 음악이 안 나와도 게임은 돌아가야 한다.
  */
 
@@ -20,6 +22,9 @@
     lobby: { src: 'audio/kipi-esports.wav', volume: 0.6 },
     crown: { src: 'audio/crown-of-valor.wav', volume: 0.9 },
   };
+
+  // 로고송 실제 길이. 메타데이터가 아직이면 이 값으로 계산한다 (체험 대기실 길이).
+  const JINGLE_SEC = 19.4;
 
   const players = {};
   for (const [key, t] of Object.entries(TRACKS)) {
@@ -30,22 +35,11 @@
   }
 
   let enabled = false;
-  let lobbyTimer = null;
-  let lastLobbyStart = 0;
-  const LOBBY_EVERY_MS = 60000;   // 1분에 한 번
 
   function playFromTop(key) {
     const a = players[key];
     try { a.currentTime = 0; } catch (e) { /* 아직 메타데이터 전이면 그냥 처음부터다 */ }
     a.play().catch(() => { /* 자동재생 차단 등 — 게임은 계속 간다 */ });
-  }
-
-  function lobbyTick() {
-    if (!enabled) return;
-    if (players.lobby.paused && Date.now() - lastLobbyStart >= LOBBY_EVERY_MS) {
-      lastLobbyStart = Date.now();
-      playFromTop('lobby');
-    }
   }
 
   const Music = {
@@ -57,23 +51,7 @@
     },
 
     /**
-     * 대기 구간 로고송. on이면 즉시 한 번 울리고 이후 1분에 한 번씩 반복한다.
-     * off면 다음 예약만 멈춘다 —— 흐르던 곡을 끊지는 않는다. 19초짜리 로고송이
-     * 대기실 끝자락에 걸쳐도 문항 브리핑을 해치지 않고, 뚝 끊기는 게 더 어색하다.
-     */
-    lobby(on) {
-      if (!on) {
-        clearInterval(lobbyTimer);
-        lobbyTimer = null;
-        return;
-      }
-      if (!enabled || lobbyTimer) return;
-      lobbyTick();
-      lobbyTimer = setInterval(lobbyTick, 1000);
-    },
-
-    /**
-     * 접속 직후의 자동 재생 시도.
+     * 접속 직후의 자동 재생 시도 — 접속하면 한 차례.
      *
      * 링크를 열고 게임 화면이 뜨면 잠깐 뒤 로고송이 울린다. 브라우저가 제스처 없는
      * 재생을 막으면(대부분의 폰이 그렇다) 조용히 물러났다가, 첫 터치·키 입력에서
@@ -83,14 +61,12 @@
       setTimeout(() => {
         enabled = true;
         for (const a of Object.values(players)) a.load();
-        lastLobbyStart = Date.now();
         const a = players.lobby;
         try { a.currentTime = 0; } catch (e) { /* 메타데이터 전이면 그냥 처음부터 */ }
         a.play().catch(() => {
           const once = () => {
             document.removeEventListener('pointerdown', once);
             document.removeEventListener('keydown', once);
-            lastLobbyStart = Date.now();
             playFromTop('lobby');
           };
           document.addEventListener('pointerdown', once);
@@ -99,14 +75,30 @@
       }, delayMs || 1000);
     },
 
-    /**
-     * 로고송을 지금 즉시 한 번. 1분 주기 가드를 무시한다.
-     * 체험 시작처럼 "새로 시작한다"는 순간에는 최근에 울렸더라도 다시 울려야 한다.
-     */
+    /** 로고송을 지금 즉시 한 번. 서버의 프리쇼 큐가 이걸 부른다. */
     jingle() {
       if (!enabled) return;
-      lastLobbyStart = Date.now();
       playFromTop('lobby');
+    },
+
+    /** 로고송이 흐르는 중이면 남은 초, 아니면 null. */
+    jingleRemaining() {
+      const a = players.lobby;
+      if (a.paused || a.ended) return null;
+      const dur = isFinite(a.duration) && a.duration > 0 ? a.duration : JINGLE_SEC;
+      return Math.max(0, dur - a.currentTime);
+    },
+
+    /**
+     * 로고송을 처음부터 틀고 곡 길이(초)를 돌려준다.
+     * 재생이 실제로 시작되지 못하면(자동재생 차단 등) null — 호출한 쪽이 폴백한다.
+     */
+    async jingleStart() {
+      if (!enabled) return null;
+      const a = players.lobby;
+      try { a.currentTime = 0; } catch (e) { /* 메타데이터 전 */ }
+      try { await a.play(); } catch (e) { return null; }
+      return isFinite(a.duration) && a.duration > 0 ? a.duration : JINGLE_SEC;
     },
 
     /** 우승 확정 — 곧바로 처음부터. 이미 흐르는 중이면 그대로 둔다. */
@@ -122,9 +114,8 @@
       if (!a.paused) a.pause();
     },
 
-    /** 화면이 가려졌을 때 등 — 전부 멈춘다. 대기 예약도 함께. */
+    /** 화면이 가려졌을 때 등 — 전부 멈춘다. */
     stopAll() {
-      this.lobby(false);
       for (const a of Object.values(players)) if (!a.paused) a.pause();
     },
   };
