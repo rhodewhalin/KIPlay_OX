@@ -10,3 +10,7 @@ Thumbs.db
 
 # 문제 은행 백업본은 로컬에만 둔다
 data/*.backup.*.json
+
+# 문항 파이프라인 산출물은 로컬에만 둔다 (그룹웨어 URL 포함)
+tools/quizgen/output/*
+!tools/quizgen/output/.gitkeep

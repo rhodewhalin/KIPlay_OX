@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>문제 재료 스크래퍼 · 12:55</title>
+<style>
+  :root {
+    --bg: #0d0f1a; --panel: #161a2b; --line: #262c44;
+    --fg: #e8eaf5; --muted: #9aa2c0;
+    --amber: #ffb020; --amber-dim: #7a5a15;
+    --ok: #3ecf8e; --err: #ff5c6c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 18px 18px; margin-bottom: 16px;
+  }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input[type=text], input[type=password], input[type=number] {
+    width: 100%; padding: 9px 11px; border-radius: 7px;
+    border: 1px solid var(--line); background: #0f1220; color: var(--fg);
+    font-size: 14px;
+  }
+  .row { display: flex; gap: 14px; }
+  .row > div { flex: 1; }
+  .chk { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; }
+  .chk input { width: 16px; height: 16px; }
+  .chk label { margin: 0; color: var(--fg); font-size: 14px; }
+  .gw-fields { margin-top: 8px; padding-left: 24px; border-left: 2px solid var(--amber-dim); }
+  .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  button {
+    margin-top: 18px; width: 100%; padding: 13px; border: 0; border-radius: 8px;
+    background: var(--amber); color: #1a1206; font-size: 15px; font-weight: 700;
+    cursor: pointer;
+  }
+  button:disabled { background: var(--amber-dim); color: #b7a06a; cursor: default; }
+  .log {
+    margin-top: 4px; background: #090b14; border: 1px solid var(--line);
+    border-radius: 8px; padding: 12px; height: 260px; overflow-y: auto;
+    font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; color: #cbd2f0;
+    white-space: pre-wrap;
+  }
+  .log .warn { color: var(--amber); }
+  .log .err { color: var(--err); }
+  .result { margin-top: 12px; }
+  .result h3 { margin: 0 0 8px; font-size: 15px; }
+  .files a, .files code { color: var(--amber); word-break: break-all; }
+  .files div { margin: 3px 0; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  td, th { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+  .hide { display: none; }
+  .q { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; display: flex; gap: 10px; }
+  .q input[type=checkbox] { width: 16px; height: 16px; margin-top: 3px; flex: none; }
+  .q .qtext { font-size: 14px; }
+  .q .qmeta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .q .qev { font-size: 12px; color: #b9c1e0; margin-top: 4px; border-left: 2px solid var(--amber-dim); padding-left: 8px; }
+  .q .ans { font-weight: 700; }
+  .q .ans.O { color: var(--ok); }
+  .q .ans.X { color: var(--err); }
+  .qsec { margin: 14px 0 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>문제 재료 스크래퍼</h1>
+  <div class="sub">최근 8일간 그룹웨어 · 지식재산 뉴스를 수집해 OX 문제 재료로 저장합니다.</div>
+
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label for="days">수집 기간 (일)</label>
+        <input type="number" id="days" value="8" min="1" max="60" />
+      </div>
+      <div>
+        <label>수집 소스</label>
+        <div style="font-size:13px;color:var(--muted);padding-top:9px">
+          지식재산처 · 한국특허정보원 · 특허뉴스 (자동)
+        </div>
+      </div>
+    </div>
+
+    <div class="chk" style="margin-top:14px">
+      <input type="checkbox" id="includeGw" />
+      <label for="includeGw">그룹웨어(공지사항 · 뉴스&amp;행사)도 포함</label>
+    </div>
+    <div id="gwFields" class="gw-fields hide">
+      <div class="row">
+        <div>
+          <label for="gwId">그룹웨어 ID</label>
+          <input type="text" id="gwId" autocomplete="off" />
+        </div>
+        <div>
+          <label for="gwPw">비밀번호</label>
+          <input type="password" id="gwPw" autocomplete="off" />
+        </div>
+      </div>
+      <div class="note">
+        비밀번호는 이 PC의 로컬 서버에서 로그인에만 사용되며, 파일이나 로그에 저장되지 않습니다.
+      </div>
+    </div>
+
+    <label for="apiKey" style="margin-top:14px">Anthropic API 키 (선택 — 퀴즈 생성 품질 향상)</label>
+    <input type="password" id="apiKey" autocomplete="off" placeholder="비우면 규칙 기반 엔진으로 생성" />
+    <div class="chk" style="margin-top:8px">
+      <input type="checkbox" id="saveKey" />
+      <label for="saveKey">이 키를 이 PC에 저장 (다음부터 입력 생략)</label>
+    </div>
+    <div class="note">
+      키가 있으면 Claude(claude-opus-5)가 문항을 생성합니다. 우선순위: 입력한 키 → 저장된 키 →
+      환경변수 ANTHROPIC_API_KEY. 저장을 체크하면 <code>tools/quizgen/output/config.json</code>에
+      남습니다 — git에 올라가지 않는 로컬 파일이고, 게임 운영 콘솔(admin)에서도 저장·삭제할 수 있습니다.
+    </div>
+
+    <button id="startBtn">수집 + 퀴즈 생성 시작</button>
+  </div>
+
+  <div class="panel">
+    <label style="margin-top:0">진행 로그</label>
+    <div class="log" id="log"></div>
+
+    <div class="result hide" id="result">
+      <h3>수집 완료</h3>
+      <div id="counts"></div>
+      <div class="files" id="files"></div>
+    </div>
+  </div>
+
+  <div class="panel hide" id="quizPanel">
+    <h3 style="margin:0 0 4px;font-size:15px">생성된 문항 검수 <span id="quizEngine" class="note"></span></h3>
+    <div class="note" style="margin-bottom:10px">
+      내용이 사실인지 확인하고, 게임에 넣을 문항만 체크하세요. 반영 시 기존 questions.json은 자동 백업됩니다.
+    </div>
+    <div id="quizList"></div>
+    <label for="adminKey" style="margin-top:6px">게임 운영 키 (반영 후 자동 리로드에 사용)</label>
+    <input id="adminKey" value="kipi" autocomplete="off">
+    <button id="applyBtn">체크한 문항을 게임에 반영</button>
+    <div id="applyResult" class="note" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<script>
+  var logEl = document.getElementById('log');
+  var startBtn = document.getElementById('startBtn');
+  var includeGw = document.getElementById('includeGw');
+  var gwFields = document.getElementById('gwFields');
+  var resultEl = document.getElementById('result');
+
+  includeGw.addEventListener('change', function () {
+    gwFields.classList.toggle('hide', !includeGw.checked);
+  });
+
+  // 저장된 API 키가 있으면 알려준다 — 입력창을 비워 둬도 그 키로 생성된다.
+  fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
+    if (c.hasKey) {
+      document.getElementById('apiKey').placeholder =
+        '저장된 키 사용 중 (' + c.keyMasked + ') — 비워 두면 그대로 사용';
+    }
+  }).catch(function () {});
+
+  function addLog(line) {
+    var div = document.createElement('div');
+    if (/⚠|오류/.test(line)) div.className = 'warn';
+    if (/실행 오류|실패/.test(line)) div.className = 'err';
+    div.textContent = line;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  var es = new EventSource('/api/stream');
+  es.addEventListener('log', function (e) { addLog(JSON.parse(e.data).line); });
+  es.addEventListener('start', function () {
+    logEl.innerHTML = '';
+    resultEl.classList.add('hide');
+    startBtn.disabled = true;
+    startBtn.textContent = '수집 중…';
+  });
+  es.addEventListener('done', function (e) { showResult(JSON.parse(e.data)); });
+  es.addEventListener('error', function () {
+    startBtn.disabled = false;
+    startBtn.textContent = '수집 시작';
+  });
+
+  function showResult(data) {
+    startBtn.disabled = false;
+    startBtn.textContent = '수집 시작';
+    if (!data || !data.meta) return;
+    var counts = data.meta.counts || {};
+    var rows = Object.keys(counts).map(function (k) {
+      return '<tr><td>' + k + '</td><td>' + counts[k] + '</td></tr>';
+    }).join('');
+    document.getElementById('counts').innerHTML =
+      '<table><tr><th>소스</th><th>건수</th></tr>' + rows +
+      '<tr><th>합계</th><th>' + data.meta.total + '</th></tr></table>';
+    var f = data.files || {};
+    document.getElementById('files').innerHTML =
+      '<div>원문(JSON): <code>' + f.json + '</code></div>' +
+      '<div>원문(MD): <code>' + f.md + '</code></div>' +
+      '<div>문제 후보(questions.json 스키마, ' + f.candidateCount + '건): <code>' + f.candidates + '</code></div>';
+    resultEl.classList.remove('hide');
+  }
+
+  startBtn.addEventListener('click', function () {
+    var payload = {
+      days: Number(document.getElementById('days').value) || 8,
+      includeGroupware: includeGw.checked,
+      id: document.getElementById('gwId').value.trim(),
+      password: document.getElementById('gwPw').value,
+      apiKey: document.getElementById('apiKey').value.trim(),
+      saveKey: document.getElementById('saveKey').checked,
+    };
+    if (payload.includeGroupware && !payload.id) {
+      addLog('⚠ 그룹웨어 ID를 입력하세요.');
+      return;
+    }
+    fetch('/api/scrape', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(function (r) {
+      if (r.status === 409) addLog('⚠ 이미 실행 중입니다.');
+    });
+  });
+
+  // ---------- 문항 검수 ----------
+  var quizPanel = document.getElementById('quizPanel');
+  var quizList = document.getElementById('quizList');
+  var applyBtn = document.getElementById('applyBtn');
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  function qCard(q, kind) {
+    var ansHtml = kind === 'pool'
+      ? '<span class="ans ' + q.answer + '">' + q.answer + '</span>'
+      : '<span class="ans">' + esc(q.answer) + (q.unit ? esc(q.unit) : '') + '</span>';
+    var note = q._note ? '<div class="qmeta">변형: ' + esc(q._note) + '</div>' : '';
+    return '<label class="q"><input type="checkbox" data-kind="' + kind + '" data-id="' + esc(q.id) + '" checked />' +
+      '<div><div class="qtext">' + esc(q.text) + ' &nbsp;→ ' + ansHtml + '</div>' +
+      '<div class="qmeta">' + esc(q.id) + ' · ' + esc(q.difficulty || '서든데스') + ' · ' + esc(q.category || '') +
+      ' · 출처: ' + esc(q.source && q.source.title) + '</div>' +
+      (q._warn ? '<div class="qmeta" style="color:#B03A2E">⚠ ' + esc(q._warn) + '</div>' : '') + note +
+      '<div class="qev">근거: ' + esc(q.evidence) + '</div></div></label>';
+  }
+
+  es.addEventListener('quiz', function (e) {
+    var quiz = JSON.parse(e.data);
+    if (!quiz || (!quiz.pool.length && !quiz.sudden.length)) return;
+    document.getElementById('quizEngine').textContent =
+      '(엔진: ' + quiz.engine + ', OX ' + quiz.pool.length + ' · 서든데스 ' + quiz.sudden.length + ')';
+    var html = '';
+    if (quiz.pool.length) {
+      html += '<div class="qsec">OX 문항</div>';
+      quiz.pool.forEach(function (q) { html += qCard(q, 'pool'); });
+    }
+    if (quiz.sudden.length) {
+      html += '<div class="qsec">서든데스 (숫자 근접값)</div>';
+      quiz.sudden.forEach(function (q) { html += qCard(q, 'sudden'); });
+    }
+    quizList.innerHTML = html;
+    document.getElementById('applyResult').textContent = '';
+    quizPanel.classList.remove('hide');
+  });
+
+  applyBtn.addEventListener('click', function () {
+    var poolIds = [], suddenIds = [];
+    quizList.querySelectorAll('input[type=checkbox]:checked').forEach(function (c) {
+      (c.dataset.kind === 'pool' ? poolIds : suddenIds).push(c.dataset.id);
+    });
+    if (!poolIds.length && !suddenIds.length) {
+      document.getElementById('applyResult').textContent = '⚠ 반영할 문항을 하나 이상 체크하세요.';
+      return;
+    }
+    applyBtn.disabled = true;
+    fetch('/api/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ poolIds: poolIds, suddenIds: suddenIds, adminKey: document.getElementById('adminKey').value }),
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      applyBtn.disabled = false;
+      if (d.error) {
+        document.getElementById('applyResult').textContent = '⚠ ' + d.error;
+      } else {
+        document.getElementById('applyResult').innerHTML =
+          '✔ 반영 완료 — OX ' + d.added.pool + '문항, 서든데스 ' + d.added.sudden + '문항 추가 ' +
+          '(게임 은행: OX ' + d.total.pool + ' · 서든데스 ' + d.total.sudden + ')<br>' +
+          '백업: <code>' + esc(d.backup) + '</code><br>' +
+          (d.reload && d.reload.ok
+            ? '게임 서버 리로드 완료 — 다음 회차부터 새 문항이 나옵니다.'
+            : d.reload && d.reload.offline
+              ? '게임 서버가 꺼져 있어요 — 켤 때 새 은행을 자동으로 읽습니다.'
+              : '⚠ 게임 리로드 실패 — 운영 키를 확인하세요.');
+      }
+    }).catch(function (e2) {
+      applyBtn.disabled = false;
+      document.getElementById('applyResult').textContent = '⚠ ' + e2.message;
+    });
+  });
+</script>
+</body>
+</html>
