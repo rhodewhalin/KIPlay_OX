@@ -14,6 +14,8 @@ node tools/quizgen/server.js    # 문항 파이프라인 (로컬 전용, :8899)
 - 참여자 `/` · 전광판 `/board.html` · 운영자 `/admin.html` (키 기본값 kipi) · 특허 보기 `/spec.html`
 - 화면 픽스처: `/?screen=lobby|question|reveal|revive|sudden|champion`, `/board.html?scene=ground|rooftop`
 - 배포: git push → Render 자동 배포 (render.yaml). ADMIN_KEY는 대시보드에서 설정.
+  **Vercel에 두지 말 것.** 서버리스가 인스턴스를 쪼개 game 싱글턴이 갈라진다 ——
+  요청 12번에 서버 3개로 갈라지는 것을 실측했다. 근거와 수치는 docs/호스팅-검토.md.
 
 ## 구조
 
