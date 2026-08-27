@@ -26,10 +26,23 @@
     </div>
     <button class="btn btn-primary" type="submit" id="join-btn">입장</button>
     <button class="btn" type="button" id="demo-open">혼자 체험해보기</button>
-    <button class="btn" type="button" id="spec-open">게임 설명</button>
+    <button class="btn" type="button" id="spec-open">특허 보기</button>
     <p class="error" id="login-error" role="alert"></p>
-    <p class="hint" id="login-hint">사번 5자리를 입력하세요.<br>2년차 미만이면 부활권 1개가 자동 지급됩니다.</p>
+    <p class="hint" id="login-hint">사번 5자리를 입력하세요.<br>2년차 미만이면 부활권 1개가 자동 지급·자동 사용됩니다.</p>
   </form>
+
+  <!-- 게임 개요. 같은 문장이 spec.html의 (57) 요약과 [0003]에도 들어간다. -->
+  <section class="intro">
+    <div class="label">게임 개요</div>
+    <ul class="intro-list">
+      <li>본 게임은 전사원이 참여하는 O·X 게임으로 한 주간의 사내 공지사항, 지재권 뉴스와 지재권 상식을 퀴즈로 푸는 전사 동시 참여형 서바이벌입니다.</li>
+      <li>매주 월요일 12:55, 점심시간 마지막 5분 동안 열립니다.</li>
+      <li>문항마다 7초 안에 O 또는 X를 고르고, 틀리거나 답을 내지 않으면 그 자리에서 탈락합니다.</li>
+      <li>최대 10문항입니다. <b>5번째 문항부터는 전부 어려움</b>이고, 한 명이 남는 순간 끝납니다.</li>
+      <li>2년차 미만 직원에게는 부활권이 회차당 1개 자동 지급되고, 틀리는 순간 자동으로 사용됩니다.</li>
+      <li>마지막 한 명이 남을 때까지 —— 끝까지 갈리지 않으면 서든데스 숫자 문항으로 가립니다.</li>
+    </ul>
+  </section>
 </section>
 
 <!-- ══════════════════════════════════ 체험 모드 -->
@@ -44,9 +57,9 @@
     <div class="opt" id="opt-role">
       <div class="label">내 역할</div>
       <div class="chips">
-        <button class="chip" type="button" data-role="new" aria-pressed="true">🌱 신입 · 부활권 1개</button>
+        <button class="chip" type="button" data-role="new" aria-pressed="true">🌱 신입 · 부활권 1개(자동)</button>
         <button class="chip" type="button" data-role="normal" aria-pressed="false">일반 직원</button>
-        <button class="chip" type="button" data-role="vip" aria-pressed="false">👑 스페셜 참가자</button>
+        <button class="chip" type="button" data-role="vip" aria-pressed="false">👑 스페셜 게스트</button>
       </div>
     </div>
 
@@ -64,7 +77,6 @@
       <button class="btn btn-primary" id="demo-start">체험 시작</button>
       <button class="btn" id="demo-back">뒤로</button>
     </div>
-    <p class="hint" style="text-align:center">로고송이 끝나는 순간 첫 문항이 나갑니다 — 남은 시간이 곧 대기실입니다.</p>
     <p class="error" id="demo-error" role="alert"></p>
   </div>
 </section>
@@ -83,7 +95,7 @@
 
   <div class="stat-row">
     <div class="stat"><span class="v mono" id="lobby-joined">0</span><span class="k">참가자</span></div>
-    <div class="stat"><span class="v mono" id="lobby-questions">5</span><span class="k">문항</span></div>
+    <div class="stat"><span class="v mono" id="lobby-questions">10</span><span class="k">문항</span></div>
     <div class="stat"><span class="v mono" id="lobby-revives">0</span><span class="k">부활권</span></div>
   </div>
 
@@ -100,7 +112,6 @@
   <button class="btn" id="lobby-demo" hidden>혼자 체험해보기</button>
 
   <div class="lobby-links">
-    <a href="/board.html" target="_blank" rel="noopener">전광판 열기 ↗</a>
     <button type="button" id="narration-toggle" aria-pressed="true">나레이션 켜짐</button>
   </div>
 </section>
@@ -108,7 +119,7 @@
 <!-- ══════════════════════════════════ 문항 진행 -->
 <section class="screen" id="s-question">
   <header class="topbar">
-    <span class="qnum mono">Q <b id="q-index">01</b> / <span id="q-total">05</span></span>
+    <span class="qnum mono">Q <b id="q-index">01</b> / <span id="q-total">10</span></span>
     <span class="alive-chip mono"><i class="dot"></i><span id="q-alive">0</span> 생존</span>
   </header>
 
@@ -133,10 +144,14 @@
 
   <p class="caption" id="caption" role="status" aria-live="polite"></p>
 
-  <div class="badge-legend" aria-hidden="true">
-    <span>👑 <b>스페셜 참가자</b></span>
-    <span>🌱 <b>2년차 미만 · 부활권</b></span>
-    <span>⚪ <b>나</b></span>
+  <!-- 범례. 도면의 부호 설명과 같은 자리이므로 괘선 상자로 묶어 화면에서 떠 있게 한다. -->
+  <div class="legend" aria-hidden="true">
+    <div class="legend-row">
+      <span class="lg lg-vip"><i>👑</i><b>스페셜 게스트</b></span>
+      <span class="lg lg-new"><i>🌱</i><b>2년차 미만 · 부활권</b></span>
+      <span class="lg lg-me"><i>↖</i><b>本人 · 나</b></span>
+    </div>
+    <div class="legend-row legend-div" id="legend-div"></div>
   </div>
 
   <p class="send-state" id="send-state" role="status" aria-live="polite"></p>
@@ -166,31 +181,10 @@
   <div class="cull mono" id="rv-cull"></div>
 </section>
 
-<!-- ══════════════════════════════════ 부활권 -->
-<section class="screen" id="s-revive">
-  <div class="label">부활권</div>
-  <h2 class="verdict-line">탈락했습니다.<br>부활권을 쓰시겠어요?</h2>
-
-  <div class="revive-ring">
-    <svg viewBox="0 0 132 132" aria-hidden="true">
-      <circle class="track" cx="66" cy="66" r="62"></circle>
-      <circle class="bar" id="revive-bar" cx="66" cy="66" r="62"
-              stroke-dasharray="389.6" stroke-dashoffset="0"></circle>
-    </svg>
-    <span class="n mono" id="revive-count">3</span>
-  </div>
-
-  <div class="revive-actions">
-    <button class="btn btn-primary" id="revive-use">사용</button>
-    <button class="btn" id="revive-skip">아끼기</button>
-  </div>
-  <p class="hint" style="text-align:center">아끼면 그대로 탈락합니다. 남은 문항은 더 어려워집니다.</p>
-</section>
-
 <!-- ══════════════════════════════════ 탈락 / 관전 -->
 <section class="screen" id="s-watch">
   <header class="topbar">
-    <span class="qnum mono">Q <b id="w-index">01</b> / <span id="w-total">05</span></span>
+    <span class="qnum mono">Q <b id="w-index">01</b> / <span id="w-total">10</span></span>
     <span class="alive-chip mono"><i class="dot"></i><span id="w-alive">0</span> 생존</span>
   </header>
 
@@ -233,11 +227,17 @@
     <h1 class="qtext" id="sd-text"></h1>
   </div>
 
-  <form id="sudden-form" style="display:flex;flex-direction:column;gap:12px">
-    <input class="sudden-input mono" id="sd-value" inputmode="numeric" placeholder="0" aria-label="답">
-    <button class="btn btn-primary" type="submit" id="sd-submit">제출</button>
-    <p class="hint" id="sd-note" style="text-align:center">동점이면 더 빨리 낸 사람이 이깁니다.</p>
-  </form>
+  <p class="hint" id="sd-note" style="text-align:center">동점이면 더 빨리 낸 사람이 이깁니다.</p>
+
+  <!-- 서든데스도 같은 게임장에서 치른다. O·X 구역이 있던 자리에 숫자 입력 칸이 놓인다 ——
+       판이 사라지면 마지막 문항만 다른 게임처럼 보인다. 칸의 좌표는 crowd.js가 준다. -->
+  <div class="stage-wrap">
+    <div class="crowd-box stage-main"><canvas id="sudden-canvas"></canvas></div>
+    <form class="sudden-pad" id="sudden-form">
+      <input class="sudden-input mono" id="sd-value" inputmode="numeric" placeholder="0" aria-label="답">
+      <button class="btn btn-primary" type="submit" id="sd-submit">제출</button>
+    </form>
+  </div>
 </section>
 
 <!-- ══════════════════════════════════ 결과 -->

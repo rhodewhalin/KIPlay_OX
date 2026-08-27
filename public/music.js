@@ -36,6 +36,40 @@
 
   let enabled = false;
 
+  /* ── 더킹 ────────────────────────────────────────────────────
+   *
+   * 마지막 문항은 우승곡과 겹친다. 곡이 클라이맥스로 가는 그 위에 중계가 얹히면
+   * 둘 다 안 들린다 —— 특히 폰 스피커에서는 음성이 곡에 완전히 묻힌다.
+   * 나레이션이 열리면 음악을 DUCK 배까지 내리고, 말이 끝나면 되돌린다.
+   *
+   * 뚝 끊지 않고 램프로 오르내린다. 볼륨이 계단으로 뛰면 그 자체가 잡음으로 들린다.
+   * speak가 겹칠 수 있으므로 열린 입의 수를 세고, 0이 될 때만 음악을 올린다.
+   */
+  const DUCK = 0.25;
+  const RAMP_MS = 180;
+  let mouths = 0;
+  let level = 1;          // 지금 걸려 있는 배율
+  let rampTimer = null;
+
+  function applyLevel() {
+    for (const [key, t] of Object.entries(TRACKS)) players[key].volume = t.volume * level;
+  }
+
+  function rampTo(target) {
+    if (rampTimer) clearInterval(rampTimer);
+    const step = 40;
+    const delta = (target - level) / Math.max(1, RAMP_MS / step);
+    rampTimer = setInterval(() => {
+      level += delta;
+      if ((delta >= 0 && level >= target) || (delta < 0 && level <= target)) {
+        level = target;
+        clearInterval(rampTimer);
+        rampTimer = null;
+      }
+      applyLevel();
+    }, step);
+  }
+
   function playFromTop(key) {
     const a = players[key];
     try { a.currentTime = 0; } catch (e) { /* 아직 메타데이터 전이면 그냥 처음부터다 */ }
@@ -112,6 +146,21 @@
     stopCrown() {
       const a = players.crown;
       if (!a.paused) a.pause();
+    },
+
+    /**
+     * 나레이션이 입을 열 때 duck(true), 끝나면 duck(false).
+     * sfx.js의 _speak가 부른다. 겹쳐 불려도 안전하다.
+     */
+    duck(on) {
+      mouths = Math.max(0, mouths + (on ? 1 : -1));
+      rampTo(mouths > 0 ? DUCK : 1);
+    },
+
+    /** 말이 다 끝났다고 확신할 때 (silence 등) — 세던 것을 리셋하고 음악을 되돌린다. */
+    unduck() {
+      mouths = 0;
+      rampTo(1);
     },
 
     /** 화면이 가려졌을 때 등 — 전부 멈춘다. */

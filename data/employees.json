@@ -23,13 +23,21 @@
     "defaultYears": 5
   },
 
+  "_colors": [
+    "본부색은 게임장에서 사람 몸통에 칠해지는 유일한 색이다. 파스텔이면 옆 본부와 구분이 안 되므로",
+    "채도를 올려 쓴다. 다만 인주(#B03A2E) 계열 —— 빨강·주황 —— 은 쓰지 않는다.",
+    "그 색은 정답 공개에만 등장해야 하고, 본부색이 그 자리를 넘보면 판정이 흐려진다.",
+    "guest(스페셜 게스트)는 본부가 아니다. 소속이 없는 참전자를 담는 칸이고 표식은 왕관이다."
+  ],
+
   "divisions": [
-    { "id": "mgmt", "name": "경영관리본부",     "short": "경영", "color": "#6B7B8C" },
-    { "id": "util", "name": "정보활용본부",     "short": "활용", "color": "#6F8489" },
-    { "id": "sys",  "name": "정보시스템본부",   "short": "시스템", "color": "#7A6B8C" },
-    { "id": "ai",   "name": "지능정보화센터",   "short": "지능", "color": "#7E8F7A" },
-    { "id": "plat", "name": "분석플랫폼지원단", "short": "분석", "color": "#8C6F6F" },
-    { "id": "etc",  "name": "감사·원장실",      "short": "기타", "color": "#8C8468" }
+    { "id": "mgmt",  "name": "경영관리본부",     "short": "경영",   "color": "#1F5FA8" },
+    { "id": "util",  "name": "정보활용본부",     "short": "활용",   "color": "#0E8F72" },
+    { "id": "sys",   "name": "정보시스템본부",   "short": "시스템", "color": "#6B3FA0" },
+    { "id": "ai",    "name": "지능정보화센터",   "short": "지능",   "color": "#A8730A" },
+    { "id": "plat",  "name": "분석플랫폼지원단", "short": "분석",   "color": "#A81E7A" },
+    { "id": "etc",   "name": "감사팀",           "short": "감사",   "color": "#4C5A63" },
+    { "id": "guest", "name": "스페셜 게스트",    "short": "게스트", "color": "#141414" }
   ],
 
   "departments": [
@@ -52,12 +60,12 @@
     { "name": "데이터관리실",     "division": "plat" },
 
     { "name": "감사팀",           "division": "etc" },
-    { "name": "원장실",           "division": "etc" }
+    { "name": "스페셜 게스트",    "division": "guest" }
   ],
 
   "roster": [
-    { "empId": "95001", "name": "김원장", "dept": "원장실", "joinYear": 1995, "vip": true, "title": "스페셜 참가자" },
-    { "empId": "03014", "name": "박운영", "dept": "경영지원실", "joinYear": 2003, "vip": true, "title": "경영관리본부장" },
+    { "empId": "95001", "name": "김원장", "dept": "스페셜 게스트", "joinYear": 1995, "vip": true, "title": "스페셜 게스트" },
+    { "empId": "03014", "name": "박운영", "dept": "경영지원실", "joinYear": 2003 },
 
     { "empId": "05021", "name": "이정보", "dept": "IP정보확산실", "joinYear": 2005 },
     { "empId": "08033", "name": "최데이터", "dept": "지능정보데이터실", "joinYear": 2008 },

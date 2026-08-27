@@ -79,7 +79,6 @@
     <a href="/" target="_blank">참여자 화면</a>
     <a href="/board.html" target="_blank">전광판</a>
     <a href="/?screen=reveal" target="_blank">픽스처: 정답공개</a>
-    <a href="/?screen=revive" target="_blank">픽스처: 부활권</a>
     <a href="/?screen=champion" target="_blank">픽스처: 챔피언</a>
     <a href="#" id="lock">키 변경</a>
   </div>
@@ -217,7 +216,7 @@ $('b-reset').onclick = () => call('reset');
 $('b-reload').onclick = async () => { await call('reload'); refreshBank(); };
 
 // 예상 소요. 서버 CONFIG의 거울 값 — armMs 3.4s(첫 문항 ×1.35) + questionMs 10s +
-// 정답공개 ~4.5s(인원에 따라 늘어나는 몫 포함), 부활권 4s, 서든데스 2.2+20s.
+// 정답공개 ~4.5s(인원에 따라 늘어나는 몫 포함), 서든데스 2.2+20s. 부활권은 자동이라 단계가 없다.
 function updateEta() {
   const n = Math.min(10, Math.max(5, Number($('qcount').value) || 5));
   const lobby = Number($('lobby').value) || 30;
@@ -226,7 +225,7 @@ function updateEta() {
   const m = Math.floor(t / 60);
   const s = t % 60;
   $('eta').textContent = `예상 소요 약 ${m}분${s ? ` ${s}초` : ''} (대기실 포함)` +
-    (secs > 300 ? ' — ⚠ 점심 예산 5분을 넘습니다' : ' — 5분 예산 안');
+    (secs > 360 ? ' — ⚠ 예산 6분을 넘습니다' : ' — 6분 예산 안');
 }
 $('qcount').oninput = updateEta;
 $('lobby').oninput = updateEta;
@@ -272,7 +271,7 @@ $('b-savekey').onclick = async () => {
 
 const PHASE_KO = {
   idle: '대기', lobby: '대기실', question: '문항', reveal: '정답공개',
-  revive: '부활권', sudden: '서든데스', result: '결과',
+  sudden: '서든데스', result: '결과',
 };
 
 let lastPhase = null;

@@ -33,12 +33,43 @@ const state = {
 // 폰에서는 O/X 버튼이 최우선이라 군중은 상단에 작게 둔다. compact 모드로 카메라를
 // 조금 더 당겨 인원이 많아도 사람이 보이게 한다. 진짜 쇼는 전광판이 담당한다.
 
-const stages = { question: null, watch: null, result: null };
+const stages = { question: null, watch: null, sudden: null, result: null };
 
 function initStages() {
   if (stages.question) return;
   stages.question = new CrowdStage($('crowd-canvas'), { compact: true, zones: true });
+
+  /**
+   * O·X 투명 버튼을 캔버스가 실제로 그린 상자에 맞춘다.
+   *
+   * 예전에는 CSS가 같은 비율(top 16.5% 따위)을 따로 적어 두었다. 도면 쪽 BOX를
+   * 고칠 때마다 버튼이 소리 없이 어긋났고, PC에서 도면 가구를 오른쪽 단으로 빼면
+   * 그 비율 자체가 성립하지 않는다. 좌표의 원본을 렌더러 하나로 모은다.
+   */
+  stages.question.onGeometry = (g) => {
+    for (const [side, id] of [['O', 'btn-o'], ['X', 'btn-x']]) {
+      const r = g[side];
+      const el = $(id);
+      el.style.left = `${r.left}px`;
+      el.style.top = `${r.top}px`;
+      el.style.width = `${r.width}px`;
+      el.style.height = `${r.height}px`;
+    }
+    // 도면이 오른쪽 단에 범례를 직접 그렸으면 HTML 범례는 물러난다.
+    // 판단 기준이 캔버스 비율이므로 CSS 미디어쿼리가 아니라 렌더러가 알려 준다.
+    body.dataset.sideNotes = g.side ? '1' : '0';
+  };
   stages.watch = new CrowdStage($('watch-canvas'), { compact: true, zones: true });
+
+  // 서든데스도 같은 게임장이다. O·X 두 구역이 있던 자리를 숫자 입력 칸 하나가 덮는다.
+  stages.sudden = new CrowdStage($('sudden-canvas'), { compact: true, zones: true });
+  stages.sudden.onGeometry = (g) => {
+    const el = $('sudden-form');
+    el.style.left = `${g.O.left}px`;
+    el.style.top = `${g.O.top}px`;
+    el.style.width = `${g.X.left + g.X.width - g.O.left}px`;
+    el.style.height = `${g.O.height}px`;
+  };
   // 결과 화면의 옥상. O·X 발판은 필요 없다.
   stages.result = new CrowdStage($('result-canvas'), { compact: true, zones: false });
   // 옥상 배경 사진. roofimage.js에서 켜기 전까지는 절차적 옥상이 쓰인다.
@@ -121,12 +152,27 @@ const GAP_MS = 500;   // 문장 사이 한 박자
  * 위상이 바뀌면 하던 말을 끊는다. 대기실 인사를 다 읽느라 첫 문항 소개가 뒤로 밀리면
  * 화면은 이미 문제를 보여주는데 귀에서는 아직 대기실 이야기가 나온다. 그게 어긋남의 정체였다.
  */
+/**
+ * 중계 자막.
+ *
+ * 예전에는 한 줄만 띄우고 7초 뒤 지웠다. 폰에서는 그걸로 충분했지만 PC에서는
+ * 오른쪽 단이 대부분 빈 채로 남았고, 잠깐 눈을 뗀 사이의 멘트는 흔적도 없이 사라졌다.
+ * 지나간 몇 줄을 흐리게 남겨 둔다 —— 방송 자막이 그렇듯 직전 맥락이 같이 보여야 한다.
+ * 좁은 화면에서는 CSS가 마지막 한 줄만 보여 준다.
+ */
+const CAPTION_KEEP = 5;
+
 function showCaption(line) {
   const el = $('caption');
-  el.textContent = line.text;
-  el.dataset.tone = line.tone || '';
+  const row = document.createElement('p');
+  row.className = 'cap-line';
+  row.dataset.tone = line.tone || '';
+  row.textContent = line.text;
+  el.appendChild(row);
+  while (el.children.length > CAPTION_KEEP) el.removeChild(el.firstChild);
+
   clearTimeout(captionTimer);
-  captionTimer = setTimeout(() => { el.textContent = ''; el.dataset.tone = ''; }, 7000);
+  captionTimer = setTimeout(() => { el.textContent = ''; }, 14000);
   const turn = line.phase && line.phase !== lastSpokenPhase;
   lastSpokenPhase = line.phase || lastSpokenPhase;
   Sfx.say(line.say || line.text, { force: turn });
@@ -162,12 +208,47 @@ function drainCaptions() {
   }
 }
 
-/** 선택 가리기 안내. 규칙이 바뀌었다는 걸 화면에 계속 남긴다. */
+/**
+ * 본부 범례.
+ *
+ * 게임장에서 사람 몸통에 칠해지는 색이 곧 본부다. 그런데 그 대응표가 어디에도 없어서
+ * "저 파란 무리가 누구냐"를 물어볼 수밖에 없었다. 도면의 「부호의 설명」과 같은 자리에
+ * 색 견본을 깔아 둔다. 색은 서버 명부(data/employees.json)가 원본이다.
+ *
+ * 스페셜 게스트는 본부가 아니다 —— 소속 없이 참전하는 자리이므로 범례에서는 뺀다.
+ * 그 사람의 표식은 색이 아니라 왕관이고, 그건 윗줄에 이미 적혀 있다.
+ */
+let divLegendKey = '';
+
+function renderDivLegend(s) {
+  const el = $('legend-div');
+  if (!el) return;
+  // divisionNames는 매 틱 온다. crowd는 회차당 한 번뿐이라 그것만 보면 두 번째 문항부터
+  // 색표가 통째로 지워졌다 —— 실제로 그랬다. 없으면 지우지 말고 그대로 둔다.
+  const divs = s.divisionNames || (s.crowd && s.crowd.divisions) || [];
+  const shown = divs.filter((d) => d.id !== 'guest' && d.color);
+  if (!shown.length) return;
+  const key = shown.map((d) => `${d.id}${d.color}`).join('|');
+  if (key === divLegendKey) return;   // 회차 내내 같은 표다. 매 틱 다시 그리지 않는다.
+  divLegendKey = key;
+  el.innerHTML = shown
+    .map((d) => `<span class="lg-div"><i class="sw" style="color:${d.color}"></i>${d.short || d.name}</span>`)
+    .join('');
+}
+
+/**
+ * 선택 가리기 안내.
+ *
+ * 이 문구는 집계 바 바로 아래에 붙는다 —— 즉 집계를 보려다 못 보는 순간에만 뜻이 있다.
+ * 예전에는 idle·lobby만 빼고 다 띄웠기 때문에 정답 공개, 부활권, 서든데스, 결과까지
+ * 따라다녔다. 서든데스에는 O·X 집계 자체가 없고 결과 화면에는 감출 것이 없다.
+ * 응답을 받는 동안에만 남긴다.
+ */
 function renderBlindNote(s) {
   const el = $('blind-note');
-  const hidden = s.tallyVisible === false && s.phase !== 'idle' && s.phase !== 'lobby';
+  const hidden = s.tallyVisible === false && s.phase === 'question';
   el.hidden = !hidden;
-  if (hidden) el.textContent = `${s.tallyFrom || 30}명 이하부터는 다른 사람이 무엇을 골랐는지 보이지 않습니다`;
+  if (hidden) el.textContent = `${s.tallyFrom || 30}명 미만부터는 다른 사람이 무엇을 골랐는지 보이지 않습니다`;
 }
 
 // ═══════════════════════════════════════════════ 유틸
@@ -249,10 +330,6 @@ function startTimerLoop() {
       $('sd-timer').classList.toggle('urgent', remain <= 4000);
     } else if (s.phase === 'lobby') {
       $('lobby-countdown').textContent = fmtClock(remain);
-    } else if (s.phase === 'revive' && state.screen === 'revive') {
-      const ratio = Math.max(0, Math.min(1, remain / 3000));
-      $('revive-count').textContent = Math.max(0, Math.ceil(remain / 1000));
-      $('revive-bar').style.strokeDashoffset = String(389.6 * (1 - ratio));
     }
   };
   rafId = requestAnimationFrame(step);
@@ -281,17 +358,17 @@ function render(s) {
 
   initStages();
   if (s.crowd) eachStage((st) => st.setCrowd(s.crowd));
-  eachStage((st) => { st.setState(s); if (me.ci !== null) st.setMyIndex(me.ci); });
+  eachStage((st) => { st.setState(s); st.setMyName(me.name); if (me.ci !== null) st.setMyIndex(me.ci); });
 
   // ── 개인 카드
   $('me-name').textContent = me.name;
   $('me-dept').textContent = me.dept;
   $('me-badges').innerHTML = '';
   if (me.isNew) $('me-badges').insertAdjacentHTML('beforeend', '<span class="badge badge-new">새싹</span>');
-  if (me.isVip) $('me-badges').insertAdjacentHTML('beforeend', '<span class="badge badge-vip">👑 스페셜 참가자</span>');
+  if (me.isVip) $('me-badges').insertAdjacentHTML('beforeend', '<span class="badge badge-vip">👑 스페셜 게스트</span>');
 
   $('lobby-joined').textContent = s.joined;
-  $('lobby-questions').textContent = s.qTotal || 5;
+  $('lobby-questions').textContent = s.qTotal || 10;
   $('lobby-revives').textContent = me.revives;
 
   body.dataset.demo = s.demo ? '1' : '0';
@@ -299,6 +376,7 @@ function render(s) {
   $('rs-replay').hidden = !s.demo;
 
   renderBlindNote(s);
+  renderDivLegend(s);
   runCommentary(s);
 
   const phaseChanged = s.phase !== lastPhase;
@@ -360,9 +438,17 @@ function render(s) {
         $('rv-answer').className = 'verdict-glyph mono ' + (r.answer === 'O' ? 'verdict-ok' : 'verdict-no');
         $('rv-evidence').textContent = r.evidence || '';
         $('rv-source').textContent = r.source && r.source.title ? `근거 · ${r.source.title}` : '';
-        $('rv-cull').textContent = `${r.eliminatedCount}명 탈락 · ${r.alive}명 생존`;
+        $('rv-cull').textContent = r.revivedCount
+          ? `${r.eliminatedCount}명 탈락 · ${r.alive}명 생존 · 부활권 ${r.revivedCount}명`
+          : `${r.eliminatedCount}명 탈락 · ${r.alive}명 생존`;
 
-        if (me.correct === true) {
+        // 부활권은 이제 서버가 자동으로 쓴다. 물어보지 않으므로 결과만 알린다.
+        if (me.revived) {
+          $('rv-line').innerHTML =
+            '오답입니다.<br><b>부활권이 자동으로 사용되어 살아남았습니다.</b>';
+          $('rv-line').className = 'verdict-line verdict-ok';
+          Sfx.rise();
+        } else if (me.correct === true) {
           $('rv-line').textContent = '정답입니다. 살아남았어요.';
           $('rv-line').className = 'verdict-line verdict-ok';
           Sfx.correct();
@@ -379,15 +465,6 @@ function render(s) {
       setScreen('reveal');
       break;
     }
-
-    case 'revive':
-      if (me.revivePending) {
-        if (phaseChanged) { Sfx.warn(); $('revive-use').disabled = false; $('revive-skip').disabled = false; }
-        setScreen('revive');
-      } else {
-        setScreen('reveal');
-      }
-      break;
 
     case 'sudden': {
       $('sd-alive').textContent = s.alive;
@@ -564,10 +641,9 @@ function renderResult(s, me) {
 
   if (r.vip) {
     $('rs-vip').hidden = false;
-    const beaten = r.vipBeaten.length;
-    $('rs-vip-text').textContent = beaten
-      ? `${r.vip.title || 'VIP'} ${r.vip.name}님은 ${r.vip.survived}문항에서 멈췄습니다. ${beaten}명이 넘어섰고, 이분들이 커피 상품권 추첨 대상입니다.`
-      : `${r.vip.title || 'VIP'} ${r.vip.name}님이 ${r.vip.survived}문항을 생존했습니다. 아무도 넘지 못했습니다.`;
+    // 격파 이벤트는 걷어냈다. 어디까지 갔는지만 적는다 —— 순위표에서는 소속 없이 왕관만 붙는다.
+    $('rs-vip-text').textContent =
+      `${r.vip.title || '스페셜 게스트'} ${r.vip.name}님은 ${r.vip.survived}문항을 생존했습니다.`;
   } else {
     $('rs-vip').hidden = true;
   }
@@ -632,7 +708,6 @@ function connect() {
     });
   });
 
-  es.addEventListener('revive', () => Sfx.warn());
 
   // 프리쇼(월 12:50~12:55) — 서버 큐에 맞춰 전원이 같은 순간에 로고송을 튼다
   es.addEventListener('jingle', () => Music.jingle());
@@ -783,17 +858,6 @@ function choose(answer, btn) {
 $('btn-o').addEventListener('click', (e) => choose('O', e.currentTarget));
 $('btn-x').addEventListener('click', (e) => choose('X', e.currentTarget));
 
-$('revive-use').addEventListener('click', () => {
-  $('revive-use').disabled = true; $('revive-skip').disabled = true;
-  Sfx.correct();
-  post('/api/revive', { token: state.token, use: true });
-});
-
-$('revive-skip').addEventListener('click', () => {
-  $('revive-use').disabled = true; $('revive-skip').disabled = true;
-  post('/api/revive', { token: state.token, use: false });
-});
-
 $('sudden-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const s = state.snap;
@@ -814,7 +878,7 @@ const demoOpts = { role: 'new', bots: 80 };
 
 /** 역할별 시연용 사번 (5자리). 명부에 등록된 사번을 그대로 쓴다. */
 function demoEmpId(role) {
-  if (role === 'vip') return '95001';     // 스페셜 참가자
+  if (role === 'vip') return '95001';     // 스페셜 게스트
   if (role === 'normal') return '15029';  // 임특허 · 11년차
   return '26005';                         // 조새싹 · 0년차 · 부활권 대상
 }
@@ -950,33 +1014,54 @@ if (!fixtureName) Music.autoJingle(1000);
 startTimerLoop();
 
 // ── 화면별 픽스처. 서버 없이 각 화면을 바로 확인할 수 있다.
-//    예) /?screen=reveal   /?screen=revive   /?screen=champion
+//    예) /?screen=reveal   /?screen=suddendeath   /?screen=champion
 const fixture = fixtureName;
 if (fixture) {
   const demo = {
     phase: 'idle', serverNow: Date.now(), phaseEndsAt: 0, joined: 312, alive: 37,
-    qIndex: 2, qTotal: 5, o: 214, x: 98, feed: [], result: null,
+    qIndex: 2, qTotal: 10, o: 214, x: 98, feed: [], result: null,
     question: { text: 'PCT 국제출원을 하면 지정한 모든 국가에 자동으로 특허가 등록된다.', difficulty: 'hard' },
     sudden: { text: '발명왕 에디슨이 생전에 취득한 미국 특허는 모두 몇 건일까?', unit: '건' },
     reveal: { answer: 'X', evidence: 'PCT는 국제출원 절차일 뿐이며, 각 지정국의 국내단계 진입과 개별 심사가 필요하다.',
               source: { title: '특허협력조약(PCT) 제도 안내' }, o: 214, x: 98, eliminatedCount: 214, alive: 37 },
     me: { name: '조새싹', dept: '정보서비스실', years: 0, isNew: true, isVip: false,
-          alive: true, revives: 1, survived: 2, correct: false, revivePending: true, inSudden: true, points: 25 },
+          alive: true, revives: 1, survived: 2, correct: false, revived: true, inSudden: true, points: 25 },
   };
   const map = {
-    lobby: 'lobby', question: 'question', reveal: 'reveal', revive: 'revive',
+    lobby: 'lobby', question: 'question', reveal: 'reveal',
     eliminated: 'question', suddendeath: 'sudden', champion: 'result',
   };
-  demo.phase = { lobby: 'lobby', question: 'question', reveal: 'reveal', revive: 'revive',
+  demo.phase = { lobby: 'lobby', question: 'question', reveal: 'reveal',
                  eliminated: 'question', suddendeath: 'sudden', champion: 'result' }[fixture] || 'lobby';
   if (fixture === 'eliminated') demo.me.alive = false;
+
+  // 게임장이 나오는 픽스처에는 군중을 실어 준다. 이게 없으면 캔버스가 텅 비어
+  // 인물 기호도, 본부 범례도, 도면부호 지시선도 확인할 수 없다.
+  if (['question', 'eliminated', 'reveal', 'suddendeath'].includes(fixture)) {
+    const N = 37;
+    demo.crowd = {
+      round: 1, n: N,
+      divisions: [
+        { id: 'mgmt', short: '경영', color: '#1F5FA8' }, { id: 'util', short: '활용', color: '#0E8F72' },
+        { id: 'sys', short: '시스템', color: '#6B3FA0' }, { id: 'ai', short: '지능', color: '#A8730A' },
+        { id: 'plat', short: '분석', color: '#A81E7A' }, { id: 'etc', short: '감사', color: '#4C5A63' },
+        { id: 'guest', short: '게스트', color: '#141414' },
+      ],
+      div: Array.from({ length: N }, (_, i) => i % 6).join(''),
+      flags: Array.from({ length: N }, (_, i) => (i === 3 ? 'v' : i % 7 === 0 ? 'n' : '.')).join(''),
+    };
+    demo.alive = N;
+    demo.aliveMask = '1'.repeat(N);
+    demo.me.ci = 11;
+  }
   if (fixture === 'champion') {
     demo.crowd = {
       round: 1, n: 12,
       divisions: [
-        { id: 'mgmt', short: '경영', color: '#5B84F0' }, { id: 'util', short: '활용', color: '#2FC4D9' },
-        { id: 'sys', short: '시스템', color: '#A06CE8' }, { id: 'ai', short: '지능', color: '#BFD645' },
-        { id: 'plat', short: '분석', color: '#EE6BA8' }, { id: 'etc', short: '기타', color: '#8B93B0' },
+        { id: 'mgmt', short: '경영', color: '#1F5FA8' }, { id: 'util', short: '활용', color: '#0E8F72' },
+        { id: 'sys', short: '시스템', color: '#6B3FA0' }, { id: 'ai', short: '지능', color: '#A8730A' },
+        { id: 'plat', short: '분석', color: '#A81E7A' }, { id: 'etc', short: '감사', color: '#4C5A63' },
+        { id: 'guest', short: '게스트', color: '#141414' },
       ],
       div: '012345012345', flags: 'v...n....n..',
     };
@@ -985,7 +1070,7 @@ if (fixture) {
       champion: { name: '조새싹', dept: '정보서비스실', div: 'sys', ci: 4, isNew: true, survived: 5 },
       ranking: [
         { rank: 1, name: '조새싹', dept: '정보서비스실', survived: 5, points: 105, isNew: true, vip: false },
-        { rank: 2, name: '김원장', dept: '원장실', survived: 4, points: 45, isNew: false, vip: true },
+        { rank: 2, name: '김원장', dept: '스페셜 게스트', survived: 4, points: 45, isNew: false, vip: true },
         { rank: 3, name: '한분석', dept: '데이터실', survived: 4, points: 45, isNew: false, vip: false },
       ],
       sudden: [{ name: '조새싹', value: 1100, diff: 7, rt: 4210 }],
@@ -994,13 +1079,20 @@ if (fixture) {
         { n: 1, text: '특허권의 존속기간은 출원일부터 20년이다.', answer: 'O', difficulty: 'easy', evidence: '특허법 제88조. 존속기간은 설정등록일부터 출원일 후 20년까지다.', source: '특허법 제88조' },
         { n: 2, text: '코카콜라의 제조법은 특허로 등록되어 있다.', answer: 'X', difficulty: 'medium', evidence: '영업비밀로 관리한다. 특허로 공개하면 20년 뒤 누구나 쓸 수 있다.', source: '영업비밀 제도 안내' },
       ],
-      vip: { name: '김원장', title: '스페셜 참가자', survived: 4 },
-      vipBeaten: [{ name: '조새싹', dept: '정보서비스실' }],
+      vip: { name: '김원장', title: '스페셜 게스트', survived: 4 },
       totalPlayers: 312,
     };
   }
-  demo.phaseEndsAt = Date.now() + (demo.phase === 'sudden' ? 15000 : demo.phase === 'revive' ? 3000 : 7000);
+  demo.phaseEndsAt = Date.now() + (demo.phase === 'sudden' ? 15000 : 7000);
   lastPhase = null;
   render(demo);
+
+  // 선택 방향은 상태가 아니라 별도의 tally 이벤트로 온다. 픽스처에는 그 통로가 없으므로
+  // 직접 먹인다 —— 사람들이 두 구역으로 흩어져야 게임장이 게임장처럼 보인다.
+  // 서든데스는 O·X로 갈리지 않는다 —— 전원이 출발선에 남아 숫자를 적는다.
+  if (demo.crowd && fixture !== 'suddendeath') {
+    const mask = Array.from({ length: demo.crowd.n }, (_, i) => (i % 3 ? 'O' : 'X')).join('');
+    eachStage((st) => st.applyChoices(mask));
+  }
   void map;
 }

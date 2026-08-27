@@ -45,12 +45,11 @@ const CONFIG = {
    */
   suddenArmMs: Number(process.env.SUDDEN_ARM_MS) || 2200,
   revealMs: 3000,     // 정답 공개 (아래 revealMsFor로 인원에 따라 늘어난다)
-  reviveMs: 4000,     // 부활권 선택
   suddenMs: 20000,    // 서든데스
   lobbyMs: 30000,     // 기본 대기실 (실전은 5분)
   tallyMs: 1000,      // 실시간 집계 브로드캐스트 간격
 
-  questionCount: 5,
+  questionCount: 10,
   newbieYears: 2,     // 입사 N년 미만에게 부활권
   heartbeatMs: 15000, // SSE keep-alive
 
@@ -82,7 +81,7 @@ const CONFIG = {
 /* 게임장은 하나다. 층 상승 구조는 걷어냈다 —— 살아남은 사람들이 같은 자리에서
  * 계속 겨룬다. 옥상은 게임 장면이 아니라 우승 연출 전용으로만 남는다. */
 
-const POINTS = { join: 5, survive: 10, champion: 50, beatVip: 30 };
+const POINTS = { join: 5, survive: 10, champion: 50 };
 
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -102,6 +101,16 @@ let DEPTS = STAFF.departments.map((d) => (typeof d === 'string' ? { name: d, div
 let DIVISIONS = STAFF.divisions || [{ id: 'etc', name: '기타', color: '#8B93B0' }];
 let DEPT_DIV = new Map(DEPTS.map((d) => [d.name, d.division]));
 let DIV_COLOR = new Map(DIVISIONS.map((d) => [d.id, d.color]));
+
+/**
+ * 자동 배정 대상 부서.
+ *
+ * 'guest'는 본부가 아니다 —— 소속 없이 참전하는 스페셜 게스트를 담는 칸이라
+ * 미등록 사번이나 봇이 굴러들어가면 안 된다. 명부에 이름이 적힌 사람만 그 자리에 선다.
+ */
+let OPEN_DEPTS = DEPTS.filter((d) => d.division !== 'guest');
+const rebuildOpenDepts = () => { OPEN_DEPTS = DEPTS.filter((d) => d.division !== 'guest'); };
+if (!OPEN_DEPTS.length) OPEN_DEPTS = DEPTS;
 
 const divisionOf = (deptName) => DEPT_DIV.get(deptName) || 'etc';
 let ID = Object.assign({ digits: 5, yearPrefix: 2, defaultYears: 5 }, STAFF.idFormat || {});
@@ -136,7 +145,7 @@ function resolveEmployee(empId) {
   if (joinYear < 1960 || joinYear > nowYear) return null;
 
   const seq = Number(id.slice(ID.yearPrefix > 0 ? ID.yearPrefix : 0)) || 0;
-  const dept = known ? known.dept : DEPTS[seq % DEPTS.length].name;
+  const dept = known ? known.dept : OPEN_DEPTS[seq % OPEN_DEPTS.length].name;
 
   return {
     empId: id,
@@ -166,7 +175,6 @@ const BOT_GIVEN = ['민준', '서연', '도윤', '하은', '시우', '지우', '
 const BOT_ACCURACY = { easy: 0.85, medium: 0.6, hard: 0.4 };
 
 const BOT_AFK_RATE = 0.04;   // 무응답 비율
-const BOT_REVIVE_RATE = 0.65; // 신입 봇의 부활권 사용 확률
 
 let botTimers = [];
 
@@ -196,8 +204,8 @@ function spawnBots(count) {
       {
         empId: `${String(joinYear % 100).padStart(2, '0')}${String(100 + (i % 900)).padStart(3, '0')}`,
         name: makeBotName(i),
-        dept: DEPTS[i % DEPTS.length].name,
-        div: DEPTS[i % DEPTS.length].division,
+        dept: OPEN_DEPTS[i % OPEN_DEPTS.length].name,
+        div: OPEN_DEPTS[i % OPEN_DEPTS.length].division,
         title: null,
         vip: false,
         years,
@@ -251,7 +259,7 @@ function scheduleBotSudden(participants) {
 const DIV_INDEX = new Map(DIVISIONS.map((d, i) => [d.id, i]));
 
 const game = {
-  phase: 'idle', // idle | lobby | question | reveal | revive | sudden | result
+  phase: 'idle', // idle | lobby | question | reveal | sudden | result
   demo: false,
   round: 0,
   armAt: 0,      // 응답 시계가 켜지는 시각. 그전은 브리핑 구간이다.
@@ -285,8 +293,7 @@ function newPlayer(emp, token) {
     rt: null,
     survived: 0,         // 생존 문항 수
     eliminatedAt: null,  // 탈락 문항 index
-    revivePending: false,
-    reviveChoice: null,
+    revivedAt: null,     // 부활권이 자동으로 쓰인 문항 index
     suddenValue: null,
     suddenRt: null,
     points: 0,
@@ -325,8 +332,7 @@ function resetPlayerForRound(p) {
   p.rt = null;
   p.survived = 0;
   p.eliminatedAt = null;
-  p.revivePending = false;
-  p.reviveChoice = null;
+  p.revivedAt = null;
   p.suddenValue = null;
   p.suddenRt = null;
   p.points = POINTS.join;
@@ -446,7 +452,9 @@ function publicState() {
     armAt: game.phase === 'question' || game.phase === 'sudden' ? game.armAt : null,
     suddenMs: CONFIG.suddenMs,
     divAlive: divisionCounts(),
-    divisionNames: DIVISIONS.map((d) => ({ id: d.id, name: d.name, short: d.short || d.name })),
+    // 색까지 함께 보낸다. 군중 배열(crowd)은 회차당 한 번뿐이라, 화면 범례가 그걸
+    // 참조하면 두 번째 문항부터 색을 잃는다. 매 틱 오는 이 목록이 범례의 원본이다.
+    divisionNames: DIVISIONS.map((d) => ({ id: d.id, name: d.name, short: d.short || d.name, color: d.color })),
     aliveMask: game.crowd.length ? aliveMask() : null,
     named: namedPayload(),
     phaseEndsAt: game.phaseEndsAt,
@@ -491,7 +499,8 @@ function personalState(p) {
       answer: p.answer,
       survived: p.survived,
       eliminatedAt: p.eliminatedAt,
-      revivePending: !!p.revivePending,
+      // 이번 정답 공개에서 부활권이 자동으로 쓰였는가
+      revived: p.revivedAt === game.qIndex && game.phase === 'reveal',
       inSudden: !!p.inSudden,
       points: p.points,
       correct: game.phase === 'reveal' && game.lastReveal ? p.lastCorrect ?? null : null,
@@ -541,29 +550,47 @@ function schedule(ms, fn) {
   phaseTimer = setTimeout(fn, ms);
 }
 
+/**
+ * 회차 문항 선발.
+ *
+ * 사다리는 앞 네 문항까지만 완만하다 —— 1·2번 쉬움, 3·4번 보통. **5번부터 끝까지는
+ * 전부 어려움이다.** 쉬운 문항이 이어지면 마지막까지 100명 넘게 살아남아, 우승자를
+ * 숫자 하나로 가리는 사실상의 추첨이 되기 때문이다(160명 전원 정답 회차에서 실측).
+ * 어려움 구간의 목표 정답률이 30%이므로 생존자는 문항마다 3분의 1로 줄고,
+ * 대개 8번 안팎에서 한 명이 남는다. 10번까지 가고도 둘 이상이면 서든데스로 맺는다.
+ *
+ * 한 난이도가 동나면 이웃 난이도에서 메운다. 문제 은행이 얇아도 회차는 굴러가야 한다.
+ */
 function pickQuestions(count = CONFIG.questionCount) {
   const pool = BANK.pool;
-  const byDiff = (d) => pool.filter((q) => q.difficulty === d).sort(() => Math.random() - 0.5);
-  const easy = byDiff('easy');
-  const medium = byDiff('medium');
-  const hard = byDiff('hard');
+  const shuffled = (d) => pool.filter((q) => q.difficulty === d).sort(() => Math.random() - 0.5);
+  const bins = { easy: shuffled('easy'), medium: shuffled('medium'), hard: shuffled('hard') };
+  const used = new Set();
 
-  // PRD 5.3 난이도 사다리를 비율로 일반화: 앞 40% 쉬움 → 20% 보통 → 뒤 40% 어려움.
-  // 기본 5문항이면 2·1·2 — 원래 사다리 [쉬움,쉬움,보통,어려움,어려움]과 같다.
-  const nEasy = Math.round(count * 0.4);
-  const nHard = Math.round(count * 0.4);
-  const nMedium = Math.max(0, count - nEasy - nHard);
-  const ladder = [
-    ...easy.slice(0, nEasy),
-    ...medium.slice(0, nMedium),
-    ...hard.slice(0, nHard),
-  ];
-  while (ladder.length < count) {
-    const rest = pool.filter((q) => !ladder.includes(q));
-    if (!rest.length) break;
-    ladder.push(rest[Math.floor(Math.random() * rest.length)]);
+  const take = (order) => {
+    for (const d of order) {
+      const q = bins[d].find((x) => !used.has(x));
+      if (q) { used.add(q); return q; }
+    }
+    const rest = pool.find((x) => !used.has(x));
+    if (rest) used.add(rest);
+    return rest || null;
+  };
+
+  const PLAN = ['easy', 'easy', 'medium', 'medium'];   // 그 뒤는 전부 hard
+  const FALLBACK = {
+    easy: ['easy', 'medium', 'hard'],
+    medium: ['medium', 'hard', 'easy'],
+    hard: ['hard', 'medium', 'easy'],
+  };
+
+  const ladder = [];
+  for (let i = 0; i < count; i += 1) {
+    const q = take(FALLBACK[PLAN[i] || 'hard']);
+    if (!q) break;
+    ladder.push(q);
   }
-  return ladder.slice(0, count);
+  return ladder;
 }
 
 function startGame(lobbyMs, opts = {}) {
@@ -637,17 +664,36 @@ function revealQuestion() {
     }
   }
 
-  for (const p of eliminated.slice(0, 14)) {
+  /* 부활권은 자동으로 쓴다.
+   *
+   * 예전에는 4초짜리 선택 화면을 띄우고 「사용 / 아끼기」를 물었다. 그런데 아낄 이유가
+   * 없다 —— 회차가 끝나면 권리도 같이 사라지므로 안 쓰면 그냥 버리는 것이다. 실제로
+   * 봇도 사람도 거의 전부 사용을 눌렀고, 남은 것은 회차마다 4초의 정적뿐이었다.
+   * 5분 예산에서 4초는 문항 하나의 브리핑에 맞먹는다. 물어보지 않고 살려 준다. */
+  const revived = [];
+  for (const p of eliminated) {
+    if (!p.isNew || p.revives <= 0) continue;
+    p.revives -= 1;
+    p.alive = true;
+    p.eliminatedAt = null;
+    revived.push(p);
+    game.feed.push({ name: p.name, dept: p.dept, q: game.qIndex + 1, revived: true });
+  }
+  const revivedSet = new Set(revived);
+  const finallyOut = eliminated.filter((p) => !revivedSet.has(p));
+
+  for (const p of finallyOut.slice(0, 14)) {
     game.feed.push({ name: p.name, dept: p.dept, q: game.qIndex + 1, vip: p.vip });
   }
 
   const survivors = alivePlayers().length;
 
-  // 탈락 연출이 끝나기 전에 게임이 넘어가면 안 되고, 중계 멘트가 들어갈 틈도 있어야 한다.
-  // 인원이 적을수록 길게 본다 — 후반일수록 한 명 한 명이 중요해지기 때문이다.
+  // 문항과 문항 사이. 탈락 연출이 끝나기 전에 넘어가면 안 되고, 중계 멘트가 들어갈
+  // 틈도 있어야 한다. 인원이 적을수록 길게 본다 —— 후반일수록 한 명 한 명이 중요해진다.
+  // 10문항으로 늘리면서 각 구간을 1초씩 깎았다. 열 번 반복되므로 1초가 10초다.
   const revealMs = survivors > 0
-    ? (survivors <= 10 ? 9000 : survivors < 30 ? 8000 : survivors < 100 ? 7000 : 6000)
-    : 5000;
+    ? (survivors <= 10 ? 8000 : survivors < 30 ? 7000 : survivors < 100 ? 6000 : 5000)
+    : 4000;
 
   game.phase = 'reveal';
   game.phaseEndsAt = Date.now() + revealMs;
@@ -658,46 +704,17 @@ function revealQuestion() {
     o,
     x,
     choices: choicesAtReveal, // 공개 순간 전원의 선택이 드러난다
-    eliminatedCount: eliminated.length,
-    eliminatedNames: eliminated.slice(0, 8).map((p) => p.name),
+    eliminatedCount: finallyOut.length,
+    eliminatedNames: finallyOut.slice(0, 8).map((p) => p.name),
+    // 부활권이 자동으로 쓰인 사람들. 화면과 중계가 이걸 읽어 "살아 돌아왔다"고 알린다.
+    revivedCount: revived.length,
+    revivedNames: revived.slice(0, 8).map((p) => p.name),
     alive: survivors,
   };
+  for (const p of revived) p.revivedAt = game.qIndex;
   pushState();
 
-  const candidates = eliminated.filter((p) => p.isNew && p.revives > 0);
-  schedule(revealMs, () => (candidates.length ? offerRevive(candidates) : nextStep()));
-}
-
-function offerRevive(candidates) {
-  clearTimers();
-  game.phase = 'revive';
-  game.phaseEndsAt = Date.now() + CONFIG.reviveMs;
-
-  for (const p of candidates) {
-    p.revivePending = true;
-    p.reviveChoice = p.isBot ? Math.random() < BOT_REVIVE_RATE : null;
-  }
-  pushState();
-  for (const p of candidates) {
-    if (p.res) sseSend(p.res, 'revive', { deadline: game.phaseEndsAt });
-  }
-
-  schedule(CONFIG.reviveMs, resolveRevive);
-}
-
-function resolveRevive() {
-  clearTimers();
-  for (const p of game.players.values()) {
-    if (!p.revivePending) continue;
-    p.revivePending = false;
-    if (p.reviveChoice === true && p.revives > 0) {
-      p.revives -= 1;
-      p.alive = true;
-      p.eliminatedAt = null;
-      game.feed.push({ name: p.name, dept: p.dept, q: game.qIndex + 1, revived: true });
-    }
-  }
-  nextStep();
+  schedule(revealMs, nextStep);
 }
 
 function nextStep() {
@@ -774,12 +791,6 @@ function finish(champion) {
 
   if (champion) champion.points += POINTS.champion;
 
-  let vipBeaten = [];
-  if (vip) {
-    vipBeaten = all.filter((p) => !p.vip && p.survived > vip.survived);
-    for (const p of vipBeaten) p.points += POINTS.beatVip;
-  }
-
   const ranking = all
     .sort((a, b) => {
       if (champion) {
@@ -825,8 +836,9 @@ function finish(champion) {
       evidence: q.evidence || '',
       source: (q.source && q.source.title) || '',
     })),
+    // 스페셜 게스트는 소속 없이 참전한다. 격파 이벤트("원장을 이겨라")는 걷어냈으므로
+    // 여기서는 어디까지 갔는지만 알린다 —— 굴욕적 연출도, 격파 집계도 없다.
     vip: vip ? { name: vip.name, title: vip.title, survived: vip.survived } : null,
-    vipBeaten: vipBeaten.map((p) => ({ name: p.name, dept: p.dept })),
     totalPlayers: all.length,
   };
   game.suddenResult = null;
@@ -905,8 +917,7 @@ function forceNext() {
   switch (game.phase) {
     case 'lobby': return beginQuestion(0);
     case 'question': return revealQuestion();
-    case 'reveal': return resolveRevive();
-    case 'revive': return resolveRevive();
+    case 'reveal': return nextStep();
     case 'sudden': return resolveSudden();
     default: return null;
   }
@@ -1097,12 +1108,12 @@ async function handler(req, res) {
   }
 
   // ---- 부활권
+  //
+  // 이제 서버가 정답 공개 때 자동으로 쓴다. 옛 클라이언트가 남아 있을 수 있어
+  // 엔드포인트 자체는 남기되, 언제나 "고를 것이 없다"고 답한다.
   if (p === '/api/revive') {
-    const player = game.players.get(body.token);
-    if (!player) return sendJson(res, 401, { error: 'invalid token' });
-    if (game.phase !== 'revive' || !player.revivePending) return sendJson(res, 409, { error: 'no offer' });
-    player.reviveChoice = !!body.use;
-    return sendJson(res, 200, { ok: true });
+    if (!game.players.get(body.token)) return sendJson(res, 401, { error: 'invalid token' });
+    return sendJson(res, 409, { error: 'auto' });
   }
 
   // ---- 서든데스
@@ -1164,6 +1175,7 @@ async function handler(req, res) {
       DEPTS = STAFF.departments.map((d) => (typeof d === 'string' ? { name: d, division: 'etc' } : d));
       DIVISIONS = STAFF.divisions || DIVISIONS;
       DEPT_DIV = new Map(DEPTS.map((d) => [d.name, d.division]));
+      rebuildOpenDepts();
       DIV_COLOR = new Map(DIVISIONS.map((d) => [d.id, d.color]));
       ID = Object.assign({ digits: 5, yearPrefix: 2, defaultYears: 5 }, STAFF.idFormat || {});
       ID_RE = new RegExp(`^\\d{${ID.digits}}$`);

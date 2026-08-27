@@ -94,8 +94,7 @@ async function join(empId, strategy) {
     strategy,
     submitted: [],     // 문항별 제출 답
     answering: -1,     // 이 문항의 제출을 이미 시작했는가
-    revivePrompted: 0,
-    reviveUsed: 0,
+    revivedAt: [],     // 부활권이 자동으로 쓰인 문항들
     alive: true,
     survived: 0,
     close: null,
@@ -118,11 +117,9 @@ async function join(empId, strategy) {
       }
     }
 
-    if (s.phase === 'revive' && s.me.revivePending) {
-      p.revivePrompted += 1;
-      const use = p.reviveUsed === 0;
-      if (use) p.reviveUsed += 1;
-      await post('/api/revive', { token: p.token, use });
+    // 부활권은 서버가 정답 공개 때 자동으로 쓴다. 클라이언트가 할 일이 없다.
+    if (s.phase === 'reveal' && s.me.revived && !p.revivedAt.includes(s.qIndex)) {
+      p.revivedAt.push(s.qIndex);
     }
 
     if (s.phase === 'sudden' && s.me.inSudden && p.suddenValue !== undefined && !p.suddenSent) {
@@ -144,15 +141,16 @@ function observe() {
     if (event !== 'state') return;
     if (seen.phases[seen.phases.length - 1] !== s.phase) seen.phases.push(s.phase);
     if (s.phase === 'reveal' && s.reveal) seen.reveals.push(s.reveal);
+    if (s.qTotal) seen.qTotal = s.qTotal;
     if (s.phase === 'result') seen.result = s.result;
     seen.aliveTrail.push(s.alive);
   });
   return { seen, close };
 }
 
-// 층 상승 연출과 문항 브리핑으로 한 판이 2분을 넘길 수 있다. 예산은 5분이다.
-// 5분 슬롯이 하드 제약이므로 실제 소요 시간도 함께 기록한다.
-async function waitForResult(obs, timeoutMs = 300000) {
+// 10문항 회차는 3분 후반까지 간다. 예산은 6분이다 —— 회사 공식 행사라 13시를 조금
+// 넘겨도 된다는 결정이 있었다. 슬롯이 하드 제약이므로 실제 소요 시간도 함께 기록한다.
+async function waitForResult(obs, timeoutMs = 360000) {
   const t0 = Date.now();
   while (!obs.seen.result && Date.now() - t0 < timeoutMs) await sleep(200);
   obs.elapsedMs = Date.now() - t0;
@@ -232,7 +230,8 @@ async function scenarioA() {
   ok(result.totalPlayers === 8, '총 참가자 수 일치');
 
   const survivedSum = result.ranking.reduce((a, r) => a + r.survived, 0);
-  ok(survivedSum >= 0 && result.ranking.every((r) => r.survived <= 5), '생존 문항 수가 0~5 범위');
+  const qTotal = obs.seen.qTotal || 10;
+  ok(survivedSum >= 0 && result.ranking.every((r) => r.survived <= qTotal), `생존 문항 수가 0~${qTotal} 범위`);
 
   for (const p of players) p.close();
   obs.close();
@@ -254,8 +253,9 @@ async function scenarioB() {
   await post('/api/admin/start', { key: KEY, lobbySec: 2 });
   await waitForResult(obs);
 
-  ok(newbie.revivePrompted >= 1, `부활권 선택 창이 ${newbie.revivePrompted}회 제시됨`);
-  ok(newbie.reviveUsed === 1, '부활권을 1회만 사용');
+  ok(newbie.revivedAt.length === 1, `부활권이 자동으로 1회 쓰임 (문항 ${newbie.revivedAt.map((i) => i + 1).join(',') || '-'})`);
+  ok(obs.seen.reveals.some((r) => r.revivedCount > 0), '정답 공개에 부활 인원이 실림');
+  ok(!obs.seen.phases.includes('revive'), '부활권 선택 단계가 없다 (물어보지 않는다)');
   ok(newbie.survived === 0, '무응답이므로 생존 문항 0 (미응답은 오답 처리)');
 
   const feedRevived = obs.seen.result && obs.seen.result.ranking.some((r) => r.isNew);
@@ -439,7 +439,7 @@ async function scenarioF() {
 
   await post('/api/demo/start', { token: solo.token, bots: 150, lobbySec: 2 });
   // 탈락 연출과 문항 브리핑으로 한 판이 2분을 넘길 수 있다
-  const result = await waitForResult(obs, 300000);
+  const result = await waitForResult(obs, 360000);
 
   ok(visibleAbove, `${TH}명 이상 구간에서는 집계가 보임`);
   ok(!leak, '가려진 뒤로는 집계가 한 번도 새지 않음');
@@ -447,7 +447,15 @@ async function scenarioF() {
 
   ok(crowdSeen && crowdSeen.n === 151, `군중 배열 ${crowdSeen ? crowdSeen.n : '-'}명 (본인 1 + 봇 150)`);
   ok(crowdSeen && crowdSeen.div.length === crowdSeen.n, '본부 마스크 길이가 인원과 일치');
-  ok(crowdSeen && crowdSeen.divisions.length === 6, `본부 색 ${crowdSeen ? crowdSeen.divisions.length : '-'}개`);
+  // 명부의 divisions를 그대로 싣는지만 본다. 개수를 상수로 박아 두면 조직 개편 때마다 깨진다.
+  // (본부 6 + 스페셜 게스트 1 — guest는 본부가 아니라 소속 없는 참전자의 칸이다.)
+  ok(crowdSeen && crowdSeen.divisions.length >= 2
+     && crowdSeen.divisions.every((d) => d.id && /^#[0-9A-Fa-f]{6}$/.test(d.color || '')),
+     `본부 색 ${crowdSeen ? crowdSeen.divisions.length : '-'}개 — 모두 id와 색을 갖춤`);
+  ok(crowdSeen && !crowdSeen.div.split('').some((ch) => {
+       const d = crowdSeen.divisions[Number(ch)];
+       return d && d.id === 'guest';
+     }), '봇은 스페셜 게스트 칸에 배정되지 않음');
 
   // 층 구조는 걷어냈다. 게임장은 하나이므로 결과의 장면도 늘 게임장이다.
   ok(result && result.scene === 'ground', `게임장 장면 '${result ? result.scene : '-'}' 전달됨`);
@@ -455,7 +463,7 @@ async function scenarioF() {
   // 5분 슬롯이 하드 제약이다. 대기실 2초를 뺀 순수 게임 시간을 본다.
   const gameSec = (obs.elapsedMs - 2000) / 1000;
   // 예산은 점심시간 마지막 5분이다. 그 안에만 들어오면 된다.
-  ok(gameSec < 300, `한 판 ${gameSec.toFixed(1)}초 — 5분 예산 이내`);
+  ok(gameSec < 360, `한 판 ${gameSec.toFixed(1)}초 — 6분 예산 이내`);
 
   close(); solo.close(); obs.close();
 }

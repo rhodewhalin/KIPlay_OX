@@ -28,8 +28,7 @@
 
     /**
      * 출력단 리미터.
-     * 징의 피크가 0.93까지 올라가는데 여기에 다른 소리가 겹치면 찢어진다.
-     * 모든 소리를 컴프레서로 보내 겹쳐도 깨지지 않게 한다.
+     * 효과음이 겹치면 피크가 붙어 찢어진다. 모든 소리를 컴프레서로 보내 겹쳐도 깨지지 않게 한다.
      */
     get master() {
       if (this._master && this._masterCtx === this.ctx) return this._master;
@@ -43,16 +42,6 @@
       this._master = comp;
       this._masterCtx = this.ctx;
       return comp;
-    },
-
-    _noise(seconds = 0.4) {
-      if (this.noiseBuf) return this.noiseBuf;
-      const n = Math.floor(this.ctx.sampleRate * seconds);
-      const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i = 0; i < n; i += 1) d[i] = Math.random() * 2 - 1;
-      this.noiseBuf = buf;
-      return buf;
     },
 
     /** 단순 음. 짧은 신호음에 쓴다. */
@@ -74,65 +63,6 @@
       osc.start(t0);
       osc.stop(t0 + dur + 0.02);
       osc.onended = () => { osc.disconnect(); amp.disconnect(); };
-    },
-
-    /**
-     * 징.
-     *
-     * 징은 배음이 정수배가 아니라서 단순 오실레이터로는 "댕" 소리밖에 안 난다.
-     * 어긋난 비율의 배음을 여러 개 쌓고, 각각 다른 속도로 감쇠시키고,
-     * 살짝 어긋난 쌍을 겹쳐 맥놀이를 만들고, 타격 순간에 노이즈를 얹는다.
-     */
-    gong({ freq = 92, dur = 4.2, gain = 0.5, delay = 0 } = {}) {
-      if (!this.ctx || this.muted) return;
-      const ctx = this.ctx;
-      const t0 = ctx.currentTime + delay;
-
-      const master = ctx.createGain();
-      master.gain.setValueAtTime(gain, t0);
-      master.connect(this.master);
-
-      // 타격음 — 금속을 때리는 순간의 잡음
-      const noise = ctx.createBufferSource();
-      noise.buffer = this._noise();
-      const nf = ctx.createBiquadFilter();
-      nf.type = 'bandpass';
-      nf.frequency.setValueAtTime(2600, t0);
-      nf.frequency.exponentialRampToValueAtTime(700, t0 + 0.3);
-      nf.Q.value = 0.7;
-      const ng = ctx.createGain();
-      ng.gain.setValueAtTime(0.55, t0);
-      ng.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.32);
-      noise.connect(nf).connect(ng).connect(master);
-      noise.start(t0);
-      noise.stop(t0 + 0.4);
-
-      // 어긋난 배음들. 높은 배음일수록 빨리 죽는다.
-      const partials = [1, 1.48, 2.11, 2.87, 3.66, 4.51, 5.78, 7.12];
-      partials.forEach((ratio, i) => {
-        for (const cents of [-7, 7]) {   // 쌍을 어긋나게 겹쳐 맥놀이를 만든다
-          const osc = ctx.createOscillator();
-          osc.type = 'sine';
-          const f = freq * ratio;
-          osc.frequency.setValueAtTime(f * 1.015, t0);           // 타격 직후 살짝 높았다가
-          osc.frequency.exponentialRampToValueAtTime(f, t0 + 0.6); // 제자리로 내려온다
-          osc.detune.setValueAtTime(cents * (1 + i * 0.4), t0);
-
-          const g = ctx.createGain();
-          const amp = 0.5 / (1 + i * 0.85);
-          const decay = Math.max(0.45, dur * (1 - i * 0.1));
-          g.gain.setValueAtTime(0.0001, t0);
-          g.gain.exponentialRampToValueAtTime(amp, t0 + 0.006 + i * 0.006);
-          g.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
-
-          osc.connect(g).connect(master);
-          osc.start(t0);
-          osc.stop(t0 + dur + 0.15);
-          osc.onended = () => { osc.disconnect(); g.disconnect(); };
-        }
-      });
-
-      setTimeout(() => master.disconnect(), (delay + dur + 0.4) * 1000);
     },
 
     // ── 게임 신호음
@@ -193,13 +123,28 @@
 
       // GC 방지 — 참조를 들고 있다가 끝나면 놓는다
       this._held.push(u);
+      // 말하는 동안 음악을 눌러 둔다. 마지막 문항은 우승곡 위에서 진행되므로
+      // 더킹이 없으면 중계가 곡에 통째로 묻힌다.
+      let ducked = false;
+      const duck = (on) => {
+        if (on === ducked || !global.Music || !global.Music.duck) return;
+        ducked = on;
+        global.Music.duck(on);
+      };
+      u.onstart = () => duck(true);
       const release = () => {
+        duck(false);
         const i = this._held.indexOf(u);
         if (i >= 0) this._held.splice(i, 1);
         clearInterval(keepAlive);
       };
       u.onend = release;
       u.onerror = release;
+
+      // onstart가 오지 않는 브라우저가 있다. 안전망으로 조금 뒤 스스로 잠근다.
+      setTimeout(() => { if (this._held.indexOf(u) >= 0) duck(true); }, 120);
+      // 그리고 어떤 경우에도 영원히 눌려 있지 않게 한다 —— 읽는 시간 + 여유.
+      setTimeout(release, this.estimate(text) + 4000);
 
       // Chrome이 스스로 멈추는 것을 되살린다
       const keepAlive = setInterval(() => {
@@ -239,6 +184,8 @@
     silence() {
       this._queue.length = 0;
       if ('speechSynthesis' in global) global.speechSynthesis.cancel();
+      // cancel()은 onend를 안 주는 브라우저가 있다. 음악이 눌린 채 남지 않게 직접 푼다.
+      if (global.Music && global.Music.unduck) global.Music.unduck();
     },
 
     /** 실제로 소리가 나는지 확인용. 준비 상태를 돌려준다. */

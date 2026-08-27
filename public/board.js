@@ -278,8 +278,8 @@ function render(s) {
     $('b-vip').hidden = false;
     $('b-vip').dataset.alive = String(s.vip.alive);
     $('b-vip-text').textContent = s.vip.alive
-      ? `${s.vip.title || 'VIP'} ${s.vip.name} 생존 중`
-      : `${s.vip.title || 'VIP'} ${s.vip.name} 탈락`;
+      ? `${s.vip.title || '스페셜 게스트'} ${s.vip.name} 생존 중`
+      : `${s.vip.title || '스페셜 게스트'} ${s.vip.name} 탈락`;
   } else {
     $('b-vip').hidden = true;
   }
@@ -323,10 +323,7 @@ function render(s) {
       $('b-question').textContent = s.question ? s.question.text : '';
       $('b-drop').textContent = '';
       renderSplit(s);
-      if (s.qIndex !== lastQIndex) {
-        lastQIndex = s.qIndex;
-        if (audioReady) Sfx.gong();
-      }
+      if (s.qIndex !== lastQIndex) lastQIndex = s.qIndex;
       break;
 
     case 'reveal': {
@@ -348,10 +345,6 @@ function render(s) {
       break;
     }
 
-    case 'revive':
-      showCenter(false);
-      break;
-
     case 'sudden':
       showCenter(false);
       $('b-drop').textContent = 'SUDDEN DEATH';
@@ -360,7 +353,6 @@ function render(s) {
         // 뜸을 살짝 들인다. armAt에 우승곡이 흐르면서 최종 문제가 공개되고,
         // 20초 뒤 우승이 확정되는 순간이 곡의 클라이맥스와 겹친다.
         $('b-question').textContent = '';
-        if (audioReady) Sfx.gong({ freq: 74, gain: 0.55 });
         clearTimeout(suddenArmTimer);
         suddenArmTimer = setTimeout(() => {
           if (!snap || snap.phase !== 'sudden') return;
@@ -450,8 +442,7 @@ $('audio-go').addEventListener('click', () => {
   Music.enable();
   // 접속 1회 원칙 — 준비 완료 순간에 개장 로고송을 한 차례. 이후는 서버 큐가 튼다.
   if (snap && (snap.phase === 'idle' || snap.phase === 'lobby')) Music.jingle();
-  Sfx.gong({ gain: 0.35 });
-  setTimeout(() => Sfx.say('전광판 준비 완료.'), 700);
+  setTimeout(() => Sfx.say('전광판 준비 완료.'), 500);
   $('audio-gate').hidden = true;
 });
 

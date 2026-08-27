@@ -148,7 +148,6 @@ body[data-screen="demo"]   #s-demo,
 body[data-screen="lobby"]  #s-lobby,
 body[data-screen="question"] #s-question,
 body[data-screen="reveal"] #s-reveal,
-body[data-screen="revive"] #s-revive,
 body[data-screen="watch"]  #s-watch,
 body[data-screen="sudden"] #s-sudden,
 body[data-screen="result"] #s-result { display: flex; }
@@ -258,6 +257,9 @@ body[data-demo="1"] .screen {
   align-items: center;
   gap: var(--sp-3);
   text-align: center;
+  /* 게임 개요가 붙으면서 작은 폰에서는 한 화면을 넘긴다. 로그인은 잘리면 안 되는 화면이다. */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #s-login .clock { font-size: clamp(72px, 24vw, 128px); }
@@ -525,18 +527,101 @@ body[data-demo="1"] .screen {
 }
 
 /* 배지 범례 — 왕관과 새싹이 무슨 뜻인지 알려준다 */
-.badge-legend {
+/* ── 범례 —— 도면의 「부호의 설명」
+   예전에는 회색 잔글씨 한 줄이었다. 게임장 위에서 왕관과 새싹을 찾아야 하는데
+   정작 그 뜻을 적어 둔 줄이 배경에 묻혀 아무도 읽지 않았다. 공보의 부호 설명처럼
+   괘선 상자로 묶고, 표식은 실제 화면에 그려지는 크기와 비슷하게 키운다. */
+.legend {
+  flex: 0 0 auto;
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--ink);
+  background: var(--surface);
+  padding: 7px 10px;
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.legend-row {
+  display: flex;
+  gap: 6px 14px;
   justify-content: center;
   flex-wrap: wrap;
-  font-size: 12.5px;
-  color: var(--ink-3);
+  align-items: center;
+}
+
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.lg i { font-style: normal; font-size: 15px; line-height: 1; }
+.lg b { color: var(--ink); font-weight: 700; letter-spacing: -0.01em; }
+.lg-me i { font-family: var(--mono, ui-monospace, monospace); font-weight: 700; }
+
+/* 본부색 —— 사람 몸통에 칠해지는 그 색을 그대로 네모로 찍는다 */
+.legend-div { gap: 4px 10px; }
+
+.lg-div {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.lg-div .sw {
+  width: 11px; height: 11px;
+  border: 1px solid var(--ink);
+  background: currentColor;
   flex: 0 0 auto;
 }
 
-.badge-legend span { display: flex; align-items: center; gap: 5px; }
-.badge-legend b { color: var(--ink-2); font-weight: 600; }
+/* ── 게임 개요 (로그인 화면) —— 공보의 (57) 요약과 같은 문장이다 */
+.intro {
+  text-align: left;
+  border-top: 1.5px solid var(--ink);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 34ch;
+}
+
+.intro-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.intro-list li {
+  position: relative;
+  padding-left: 14px;
+  text-align: left;   /* #s-login이 가운데 정렬이라 그대로 두면 글머리표가 허공에 뜬다 */
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.intro-list li::before {
+  content: "·";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  font-weight: 700;
+  color: var(--ink);
+}
 
 .qbody {
   flex: 0 0 auto;
@@ -622,17 +707,31 @@ body[data-demo="1"] .screen {
 .caption {
   margin: 0;
   min-height: 1.5em;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: flex-end;   /* 새 줄이 아래에서 올라온다 */
+}
+
+.cap-line {
+  margin: 0;
   font-size: 14.5px;
   line-height: 1.5;
   color: var(--ink-2);
-  flex: 0 0 auto;
-  transition: color var(--t-control) var(--ease-out);
+  text-wrap: pretty;
+  animation: capIn var(--t-control) var(--ease-out);
 }
 
-.caption[data-tone="rule"] { color: var(--amber); font-weight: 700; }
-.caption[data-tone="bad"] { color: var(--out); }
-.caption[data-tone="good"] { color: var(--live); }
-.caption[data-tone="cue"] { color: var(--ink); font-weight: 700; }
+@keyframes capIn { from { opacity: 0; transform: translateY(4px); } }
+
+.cap-line[data-tone="rule"] { color: var(--amber); font-weight: 700; }
+.cap-line[data-tone="bad"]  { color: var(--out); }
+.cap-line[data-tone="good"] { color: var(--live); }
+.cap-line[data-tone="cue"]  { color: var(--ink); font-weight: 700; }
+
+/* 좁은 화면에서는 지나간 줄을 보여 줄 자리가 없다. 지금 이 줄만. */
+.cap-line:not(:last-child) { display: none; }
 
 /* ── 선택 가리기 안내 */
 .blind-note {
@@ -705,10 +804,12 @@ body[data-demo="1"] .screen {
 }
 .stage-main { flex: 1 1 auto; min-height: 260px; }
 
+/* 여기 적힌 비율은 첫 프레임용 대비책일 뿐이다. 실제 좌표는 crowd.js의
+   zoneRects()가 px로 덮어쓴다 —— 도면과 버튼이 따로 놀지 않게 원본을 하나로 뒀다. */
 .choice {
   position: absolute;
-  top: 11.5%;
-  height: 48.5%;
+  top: 16.5%;
+  height: 43.5%;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -744,6 +845,73 @@ body[data-demo="1"] .screen {
 
 /* 판정은 캔버스가 그린다 — 등록 도장과 거절 사선. 버튼은 비켜선다. */
 .choice.correct, .choice.wrong { box-shadow: none; }
+
+/* ─────────────────────────────────────────────── 가로가 넉넉한 화면 (PC)
+ *
+ * 폰은 세로로 길어서 문항·집계·범례를 위에 쌓고 게임장을 아래에 두면 된다.
+ * PC는 반대다 —— 가로는 남고 세로가 모자라서, 그 배치로는 사람이 뛰는 공간이
+ * 손바닥만 해진다. 읽을 것을 전부 오른쪽 단으로 보내고 왼쪽 전부를 게임장에 준다.
+ * 도면 안의 가구(캡션·부호의 설명·쪽번호)도 같은 이유로 오른쪽으로 간다 —— 그쪽은
+ * crowd.js의 notesWidth()가 맡는다.
+ *
+ * HTML 순서는 그대로 두고 배치만 바꾼다. 폰에서 읽히는 순서가 옳은 순서다.
+ */
+@media (min-width: 820px) and (min-aspect-ratio: 1/1) {
+  /* body[data-screen] 규칙이 display:flex를 걸어 두므로 같은 특정도로 눌러야 한다. */
+  body[data-screen="question"] #s-question {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(260px, 26vw, 360px);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+    column-gap: 22px;
+    row-gap: var(--sp-2);
+    align-content: start;
+  }
+
+  #s-question > .topbar     { grid-area: 1 / 1 / 2 / 3; }
+  #s-question > .timer      { grid-area: 2 / 1 / 3 / 3; }
+  #s-question > .qbody      { grid-area: 3 / 1 / 4 / 2; }
+  #s-question > .stage-wrap { grid-area: 4 / 1 / 8 / 2; }
+
+  #s-question > .tally      { grid-area: 3 / 2 / 4 / 3; }
+  #s-question > .caption    { grid-area: 4 / 2 / 5 / 3; }   /* 1fr —— 남는 세로를 전부 먹는다 */
+  #s-question > .legend     { grid-area: 5 / 2 / 6 / 3; }
+  #s-question > .send-state { grid-area: 6 / 2 / 7 / 3; }
+  #s-question > .arm-note   { grid-area: 7 / 2 / 8 / 3; }
+
+  /* ── 중계 패널.
+     오른쪽 단의 남는 세로는 전부 여기다. 진행자의 말이 방송 자막처럼 아래에서
+     올라오고 지나간 줄은 흐리게 남는다 —— 빈 여백보다 이쪽이 회장 분위기를 만든다. */
+  #s-question > .caption {
+    justify-content: flex-start;
+    overflow: hidden;
+    border-left: 3px solid var(--ink);
+    border-top: 1px solid var(--line-2);
+    background: var(--surface);
+    padding: 10px 12px 12px;
+    gap: 10px;
+  }
+
+  #s-question > .caption::before {
+    content: "중 계";
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    font-weight: 700;
+    color: var(--ink-3);
+    flex: 0 0 auto;
+  }
+
+  #s-question > .caption .cap-line { display: block; font-size: 16px; }
+  /* 직전 맥락은 남기되 지금 줄에 밀리지 않게 —— 오래된 줄일수록 옅다. */
+  #s-question > .caption .cap-line:not(:last-child) { opacity: 0.42; font-size: 13.5px; }
+
+  /* 오른쪽 단은 한 줄에 하나씩 읽는 자리다. 범례도 가로로 늘어놓지 않는다. */
+  #s-question > .legend .legend-row { justify-content: flex-start; }
+  #s-question > .qbody .qtext { font-size: clamp(24px, 2.4vw, 38px); }
+}
+
+/* 도면이 스스로 범례를 그린 경우(오른쪽 단) HTML 범례는 물러난다. 같은 표를 두 번
+   싣지 않는다. 판단은 캔버스 비율이 하므로 crowd.js가 body에 표시를 남긴다. */
+body[data-side-notes="1"] .legend { display: none; }
 
 /* ─────────────────────────────────────────────── 정답 공개 */
 
@@ -797,33 +965,6 @@ body[data-demo="1"] .screen {
   font-weight: 700;
 }
 
-/* ─────────────────────────────────────────────── 부활권 */
-
-#s-revive { justify-content: center; align-items: center; gap: var(--sp-3); text-align: center; }
-
-.revive-ring {
-  position: relative;
-  width: 132px;
-  height: 132px;
-  display: grid;
-  place-items: center;
-}
-
-.revive-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
-.revive-ring circle { fill: none; stroke-width: 5; }
-.revive-ring .track { stroke: var(--surface-2); }
-.revive-ring .bar { stroke: var(--amber); stroke-linecap: round; transition: stroke-dashoffset 100ms linear; }
-
-.revive-ring .n {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 52px;
-  font-weight: 700;
-  color: var(--amber);
-}
-
-.revive-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(360px, 100%); }
-
 /* ─────────────────────────────────────────────── 탈락 / 관전 */
 
 #s-watch .dead-mark {
@@ -858,6 +999,20 @@ body[data-demo="1"] .screen {
 }
 
 /* ─────────────────────────────────────────────── 서든데스 */
+
+/* 숫자 입력 칸. O·X 구역 상자가 있던 자리에 그대로 얹힌다 —— 좌표는 crowd.js의
+   zoneRects()가 주고 app.js가 px로 입힌다. 도면이 그린 상자가 곧 이 칸의 테두리다. */
+.sudden-pad {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  /* 위쪽은 도면이 그린 「숫 자 입 력」 라벨의 자리다. 비워 둔다. */
+  padding: 13% 6% 6%;
+}
+
+.sudden-pad .btn { flex: 0 0 auto; }
 
 .sudden-input {
   width: 100%;

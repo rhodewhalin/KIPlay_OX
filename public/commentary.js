@@ -39,6 +39,7 @@
       this.lastPhase = null;
       this.lastQIndex = -1;
       this.saidThreshold = false;
+      this.sawTally = false;
       this.saidFinal = false;
       this.saidVipOut = false;
       this.lastFloor = 1;
@@ -97,7 +98,14 @@
       }
 
       // ── 룰이 바뀌는 지점. 이건 반드시 알려야 한다.
-      if (!this.saidThreshold && alive > 0 && alive < threshold && s.phase !== 'idle') {
+      //
+      // 다만 '바뀌는' 지점일 때만이다. 예전에는 idle이 아니기만 하면 읽었기 때문에,
+      // 20명짜리 체험처럼 처음부터 임계값 아래인 회차에서는 대기실에서 대뜸
+      // "이제부터는 보이지 않습니다"가 나왔다 —— 보인 적이 없는데 안 보이게 된 것이다.
+      // 집계가 실제로 보이던 회차가, 문항 중에 끊길 때만 알린다.
+      if (s.tallyVisible === true) this.sawTally = true;
+      if (!this.saidThreshold && this.sawTally && alive > 0 && alive < threshold
+          && (s.phase === 'question' || s.phase === 'reveal')) {
         this.saidThreshold = true;
         out.push({
           text: '이제부터는 다른 사람의 선택이 보이지 않습니다. 혼자 판단하셔야 합니다.',
@@ -140,9 +148,6 @@
             ? { text: `오늘의 챔피언은 ${r.champion.dept} ${r.champion.name}님입니다.`, tone: 'good' }
             : { text: '전원 탈락으로 이번 회차의 챔피언은 없습니다.', tone: 'bad' },
         );
-        if (r.champion && r.vipBeaten && r.vipBeaten.length) {
-          out.push({ text: `${r.vipBeaten.length}명이 ${r.vip ? r.vip.title || 'VIP' : 'VIP'}보다 오래 살아남았습니다.`, tone: 'calm' });
-        }
       }
 
       this.lastPhase = s.phase;
