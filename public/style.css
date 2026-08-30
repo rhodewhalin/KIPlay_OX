@@ -90,10 +90,19 @@ body {
   word-break: keep-all;
   overflow: hidden;
   overscroll-behavior: none;
+  /* 더블탭 확대·300ms 탭 지연 제거. 스크롤(로그인·결과 화면)은 그대로 허용된다. */
+  touch-action: manipulation;
 }
 
 button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
 input { font: inherit; color: inherit; }
+
+/* 조작 요소는 연타 중 글자 선택·길게눌러 나오는 콜아웃을 막는다. 입력칸은 제외. */
+button, .choice, .chip, .btn, .label, .qnum, .diff, .alive-chip {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 
 :focus-visible {
   outline: 2px solid var(--amber);
@@ -140,7 +149,12 @@ input { font: inherit; color: inherit; }
   z-index: 1;
   display: none;
   flex-direction: column;
-  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  /* 노치·둥근 모서리 대응 —— 상하 + 가로(가로모드 노치) 모두 세이프에어리어를 존중한다. */
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(20px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom))
+    max(20px, env(safe-area-inset-left));
 }
 
 body[data-screen="login"]  #s-login,
@@ -165,7 +179,7 @@ body[data-screen="result"] #s-result { display: flex; }
   right: 0;
   z-index: 4;
   display: none;
-  padding: calc(env(safe-area-inset-top) + 5px) 12px 5px;
+  padding: calc(env(safe-area-inset-top) + 5px) max(12px, env(safe-area-inset-right)) 5px max(12px, env(safe-area-inset-left));
   text-align: center;
   font-family: var(--mono);
   font-size: 11px;
@@ -855,8 +869,13 @@ body[data-demo="1"] .screen {
  * crowd.js의 notesWidth()가 맡는다.
  *
  * HTML 순서는 그대로 두고 배치만 바꾼다. 폰에서 읽히는 순서가 옳은 순서다.
+ *
+ * 이 배치는 「가로는 남고 세로가 모자란」 화면 전부에 옳다 —— PC뿐 아니라 폰 가로모드도
+ * 같은 형편이다. 그래서 트리거를 640px까지 낮춰, 세로로 쌓으면 무대가 잘려 나가는
+ * 가로모드 폰(예: 812×375)도 이 좌우 배치로 받는다. 세로 방향(aspect<1)은 제외되므로
+ * 세로모드 폰·태블릿은 종전대로 수직 적층을 유지한다.
  */
-@media (min-width: 820px) and (min-aspect-ratio: 1/1) {
+@media (min-width: 640px) and (min-aspect-ratio: 1/1) {
   /* body[data-screen] 규칙이 display:flex를 걸어 두므로 같은 특정도로 눌러야 한다. */
   body[data-screen="question"] #s-question {
     display: grid;
@@ -907,6 +926,28 @@ body[data-demo="1"] .screen {
   /* 오른쪽 단은 한 줄에 하나씩 읽는 자리다. 범례도 가로로 늘어놓지 않는다. */
   #s-question > .legend .legend-row { justify-content: flex-start; }
   #s-question > .qbody .qtext { font-size: clamp(24px, 2.4vw, 38px); }
+}
+
+/* ── 아주 낮은 가로모드(폰 가로) ─────────────────────────────────
+   세로가 480px 이하로 짧아지면 위 좌우 배치라도 무대·여백이 화면을 넘긴다.
+   body가 overflow:hidden이라 넘친 부분(=발판)이 잘려 나가므로, 세로 여백과
+   무대 최소 높이를 줄여 O·X 발판이 항상 화면 안에 들어오게 한다.
+   최소 높이 170px면 발판 구역이 약 74px로 44px 터치 하한을 넉넉히 넘는다. */
+@media (orientation: landscape) and (max-height: 480px) {
+  .screen {
+    padding:
+      max(10px, env(safe-area-inset-top))
+      max(16px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+  }
+  #s-question, #s-watch, #s-sudden { gap: 8px; }
+  .crowd-box { min-height: 110px; }
+  .stage-main { min-height: 170px; }
+  .qtext { font-size: clamp(17px, 4.2vw, 24px); line-height: 1.35; }
+  #s-question > .qbody .qtext { font-size: clamp(18px, 2.6vw, 26px); }
+  /* 짧은 화면에선 부호 설명(장식)·개요를 접어 세로를 발판에 양보한다. */
+  .legend, .intro { display: none; }
 }
 
 /* 도면이 스스로 범례를 그린 경우(오른쪽 단) HTML 범례는 물러난다. 같은 표를 두 번
