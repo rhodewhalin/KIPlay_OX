@@ -156,6 +156,15 @@
       synth.speak(u);
     },
 
+    /**
+     * 사번처럼 숫자를 하나씩 읽어야 하는 곳에 쓴다. "직원 26008" → "직원 2 6 0 0 8".
+     * 그대로 두면 한국어 TTS가 "이만육천팔"처럼 하나의 수로 읽는다. 문장 전체가 아니라
+     * 이름 조각에만 써야 한다 — "12시 55분" 같은 진짜 숫자까지 자릿수로 쪼개면 안 된다.
+     */
+    spokenDigits(str) {
+      return String(str ?? '').replace(/\d{2,}/g, (run) => run.split('').join(' '));
+    },
+
     say(text, opts = {}) {
       if (!('speechSynthesis' in global) || this.muted || !this.narrationOn || !text) return;
       if (opts.force) global.speechSynthesis.cancel();

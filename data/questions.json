@@ -299,18 +299,6 @@
       "evidence": "중국, 고가치 특허·AI 집중 육성으로 글로벌 IP 패권 가속"
     },
     {
-      "id": "q-gen-20260821-10",
-      "text": "중국은 고가치 특허와 신흥기술, 국제출원 확대를 통해 지식재산 경쟁력을 높이고 있다.",
-      "answer": "O",
-      "difficulty": "easy",
-      "category": "ip-news",
-      "source": {
-        "title": "“질보다 가치로”... 중국, 고가치 특허·AI 집중 육성으로 글로벌 IP 패권 가속",
-        "url": "https://www.e-patentnews.com/15261"
-      },
-      "evidence": "고가치 특허·신흥기술·국제출원 확대 통해 지식재산 경쟁력 고도화"
-    },
-    {
       "id": "q-gen-20260821-11",
       "text": "미국과 중국이 양자컴퓨터 오류 보정 기술의 특허를 놓고 정면충돌하고 있다.",
       "answer": "O",
@@ -336,8 +324,8 @@
     },
     {
       "id": "q-gen-20260821-13",
-      "text": "지식재산처는 상반기 우수 심사·심판관 156명과 우수 부서 13개를 선정·시상했다.",
-      "answer": "X",
+      "text": "지식재산처는 2026년 상반기 우수 심사관·심판관 104명과 우수 심사과·심판그룹 13개 부서를 선정·시상했다.",
+      "answer": "O",
       "difficulty": "hard",
       "category": "ip-news",
       "source": {
@@ -372,7 +360,7 @@
     },
     {
       "id": "q-gen-20260821-17",
-      "text": "# (조립형 패션 가발) 개인 발명가 A는 고정용 머리띠에 장식용 머리띠와 앞머리·뒷머리 가발을 선택적으로 착탈하여 다양한 머리 모양을 연출하는 기술을 특허 등록 받았다.",
+      "text": "개인 발명가 A는 고정용 머리띠에 장식용 머리띠와 앞머리·뒷머리 가발을 선택적으로 착탈하여 다양한 머리 모양을 연출하는 기술을 특허 등록 받았다.",
       "answer": "O",
       "difficulty": "easy",
       "category": "ip-news",
@@ -384,7 +372,7 @@
     },
     {
       "id": "q-gen-20260821-18",
-      "text": "# (식물성 소재) 가발 전문기업 B사는 연꽃 줄기에서 추출한 천연 섬유를 활용해 두피 건강을 유지시키는 가발 기술을 특허 등록 받았다.",
+      "text": "가발 전문기업 B사는 연꽃 줄기에서 추출한 천연 섬유를 활용해 두피 건강을 유지시키는 가발 기술을 특허 등록 받았다.",
       "answer": "O",
       "difficulty": "easy",
       "category": "ip-news",
@@ -417,18 +405,6 @@
         "url": "https://www.e-patentnews.com/15240"
       },
       "evidence": "JPO는 심사 과정에서 2013년 공개된 팬 제작 게임 'Pokémon Generations'의 플레이 영상과 기존 게임, 공개기술 등을 선행기술로 인용하며 해당 발명이 통상의 기술자가 쉽게 도출할 수 있는 수준이라고 판단, 진보성을 인정하지 않았다."
-    },
-    {
-      "id": "q-gen-20260821-21",
-      "text": "뇌와 로봇 잇는 '양방향 인터페이스' 특허전쟁 시작됐다",
-      "answer": "O",
-      "difficulty": "easy",
-      "category": "ip-news",
-      "source": {
-        "title": "\"사람이 느끼는 감각까지 로봇이 되돌려준다\"... 뇌와 로봇 잇는 '양방향 인터페이스' 특허전쟁 시작됐다",
-        "url": "https://www.e-patentnews.com/15237"
-      },
-      "evidence": "뇌와 로봇 잇는 '양방향 인터페이스' 특허전쟁 시작됐다"
     },
     {
       "id": "q-gen-20260821-22",
@@ -468,7 +444,7 @@
     },
     {
       "id": "q-gen-20260821-25",
-      "text": "K-가발 특허, 세계 1위로 글로벌 시장 흔든다",
+      "text": "한국의 가발 특허 경쟁력은 세계 1위로 평가된다.",
       "answer": "X",
       "difficulty": "medium",
       "category": "ip-news",
@@ -477,18 +453,6 @@
         "url": "https://www.e-patentnews.com/15230"
       },
       "evidence": "K-가발 특허, 세계 2위로 글로벌 시장 흔든다"
-    },
-    {
-      "id": "q-gen-20260821-26",
-      "text": "스마트·친환경·패션 가발 기술로 K-뷰티 넘어 K-가발 시대 연다",
-      "answer": "O",
-      "difficulty": "easy",
-      "category": "ip-news",
-      "source": {
-        "title": "“가리는 가발에서 패션으로”... K-가발 특허, 세계 2위로 글로벌 시장 흔든다",
-        "url": "https://www.e-patentnews.com/15230"
-      },
-      "evidence": "스마트·친환경·패션 가발 기술로 K-뷰티 넘어 K-가발 시대 연다"
     },
     {
       "id": "q-gen-20260821-27",
@@ -585,6 +549,414 @@
         "url": "https://www.e-patentnews.com/15222"
       },
       "evidence": "중국 출원 53% 독주 속 삼성전자·LG전자가 차세대 네트워크 핵심 기술 선도"
+    },
+    {
+      "id": "q-gen-20260902-01",
+      "text": "국내 최대 지식재산정보 박람회 'PATINEX 2026'은 서울 송파구 롯데호텔 월드에서 열린다.",
+      "answer": "O",
+      "difficulty": "easy",
+      "category": "ip-news",
+      "source": {
+        "title": "인공지능(AI) X 지식재산(IP), 기술혁신의 공식을 다시 쓰다!",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21023&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "롯데호텔 월드(서울 송파구)에서 개최된다."
+    },
+    {
+      "id": "q-gen-20260902-02",
+      "text": "중국 법원은 '바왕차지' 모방 매장을 운영한 업체의 상표권 침해와 부정경쟁 책임을 인정했다.",
+      "answer": "O",
+      "difficulty": "easy",
+      "category": "ip-news",
+      "source": {
+        "title": "“20m 옆에 간판부터 메뉴까지 베꼈다”... 중국 법원, ‘바왕차지’ 모방 매장에 철퇴",
+        "url": "https://www.e-patentnews.com/15328"
+      },
+      "evidence": "법원은 유명 브랜드의 등록상표를 침해하고 영업상 신용에 편승한 부정경쟁 행위라며 35만 위안의 배상을 명했다."
+    },
+    {
+      "id": "q-gen-20260902-03",
+      "text": "지식재산처는 2025년 산업디자인 출원 건수에서 세계 3위를 기록했다.",
+      "answer": "O",
+      "difficulty": "medium",
+      "category": "ip-news",
+      "source": {
+        "title": "“K-디자인, 세계 톱3 굳혔다”... 한국, 산업디자인 등록 세계 3위·전자출원 98.4%",
+        "url": "https://www.e-patentnews.com/15292"
+      },
+      "evidence": "한국이 5만6,631건으로 세계 3위에 올랐으며"
+    },
+    {
+      "id": "q-gen-20260902-04",
+      "text": "지식재산처와 산업통상부는 기업의 지식재산·기술 경쟁력 강화를 위한 업무협약(MOU)을 체결했다.",
+      "answer": "O",
+      "difficulty": "medium",
+      "category": "ip-news",
+      "source": {
+        "title": "지식재산처-산업통상부, 기업 지식재산·기술 경쟁력 강화를 위해 전방위 협력 추진",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21021&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "지식재산처(처장 김용선)와 산업통상부(장관 김정관)는 9. 1.(화) 17시, 석탄회관(서울 종로구)에서 우리 기업의 지식재산 및 산업기술 경쟁력 강화를 위한 업무협약(MOU)을 체결했다고 밝혔다."
+    },
+    {
+      "id": "q-gen-20260902-05",
+      "text": "제9차 한-아세안 지식재산 고위급 회의는 태국에서 열렸다.",
+      "answer": "X",
+      "difficulty": "medium",
+      "category": "ip-news",
+      "source": {
+        "title": "아세안에서 K-지식재산 전파, K-상표 보호에 앞장선다!",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21015&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "싱가포르 마리나베이 샌즈 엑스포 & 컨벤션에서 개최된"
+    },
+    {
+      "id": "q-gen-20260902-06",
+      "text": "한-아세안 협력기금은 2000년에 설립됐다.",
+      "answer": "X",
+      "difficulty": "medium",
+      "category": "ip-news",
+      "source": {
+        "title": "아세안에서 K-지식재산 전파, K-상표 보호에 앞장선다!",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21015&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "대한민국과 아세안 간의 경제 협력과 공동 개발을 목적으로 1990년 설립된 기금으로"
+    },
+    {
+      "id": "q-gen-20260902-07",
+      "text": "국내 최대 지식재산정보 박람회 'PATINEX'는 2026년으로 23회를 맞았다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "인공지능(AI) X 지식재산(IP), 기술혁신의 공식을 다시 쓰다!",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21023&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "올해로 22회를 맞는 PATINEX는 빠르게 변화하는 기술과 산업의 흐름을 살펴보고"
+    },
+    {
+      "id": "q-gen-20260902-08",
+      "text": "지식재산처는 2027년도 예산안으로 7,106억원을 편성했다고 밝혔다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "아이디어와 지식재산이 성장자산이 되는 혁신생태계 조성",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21020&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "지식재산처(처장 김용선)는 2027년도 예산안으로 7,106억원을 편성했다고 밝혔다."
+    },
+    {
+      "id": "q-gen-20260902-09",
+      "text": "2027년도 지식재산처 예산안은 올해보다 798억원(14.1%) 늘어난 것으로 사상 최대 규모 증액이다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "아이디어와 지식재산이 성장자산이 되는 혁신생태계 조성",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21020&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "이는 올해보다 798억원(12.7%) 증가한 것으로, 사상 최대 규모 증액이다."
+    },
+    {
+      "id": "q-gen-20260902-10",
+      "text": "지식재산처는 지식재산 거래전문관을 2026년 22명에서 2027년 36명으로 늘린다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "아이디어와 지식재산이 성장자산이 되는 혁신생태계 조성",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21020&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "지식재산 거래전문관을 증원('26. 22명 → '27. 36명)"
+    },
+    {
+      "id": "q-gen-20260902-11",
+      "text": "제주 기업 ㈜코삿의 매출액은 2021년 300만 원에서 2025년 약 9억 4천만 원으로 늘었다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "특허가 매출·수출·기업상장으로…지역기업 키우는 지식재산",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21014&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "2021년 300만 원이었던 매출액이 2025년 약 14억 9천만 원으로 증가했으며"
+    },
+    {
+      "id": "q-gen-20260902-12",
+      "text": "중국 법원은 '바왕차지' 모방 매장 운영업체에 총 35만 위안(한화 약 7,262만 원) 배상을 명령했다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“20m 옆에 간판부터 메뉴까지 베꼈다”... 중국 법원, ‘바왕차지’ 모방 매장에 철퇴",
+        "url": "https://www.e-patentnews.com/15328"
+      },
+      "evidence": "법원은 모방 매장을 운영한 광시 소재 외식업체에 경제적 손실과 권리보호를 위한 합리적 비용을 합해 총 35만 위안, 한화 약 7,262만 원을 배상하라고 판결했다."
+    },
+    {
+      "id": "q-gen-20260902-13",
+      "text": "'바왕차지' 모방 매장은 기존 매장에서 약 200m 떨어진 곳에 있었다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“20m 옆에 간판부터 메뉴까지 베꼈다”... 중국 법원, ‘바왕차지’ 모방 매장에 철퇴",
+        "url": "https://www.e-patentnews.com/15328"
+      },
+      "evidence": "기존 바왕차지 매장에서 약 20m 떨어진 곳에 자리 잡았다."
+    },
+    {
+      "id": "q-gen-20260902-14",
+      "text": "미국 특허상표청은 지난 8월 6일 항소검토패널이 판단한 'Ex parte Baurin' 심결을 선례 심결로 지정했다고 발표했다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“특허기간 연장 없어도 이중특허 거절”... 미국, OTDP 적용 범위 넓혔다",
+        "url": "https://www.e-patentnews.com/15334"
+      },
+      "evidence": "미국 특허상표청(USPTO)은 지난 8월 6일 항소검토패널(Appeals Review Panel, ARP)이 판단한 ‘Ex parte Baurin’ 심결을 선례 심결로 지정했다고 발표했다."
+    },
+    {
+      "id": "q-gen-20260902-15",
+      "text": "한국은 2025년 산업디자인 등록 건수에서 세계 2위를 기록했다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“K-디자인, 세계 톱3 굳혔다”... 한국, 산업디자인 등록 세계 3위·전자출원 98.4%",
+        "url": "https://www.e-patentnews.com/15292"
+      },
+      "evidence": "한국이 4만8,004건으로 세계 3위를 기록했다."
+    },
+    {
+      "id": "q-gen-20260902-16",
+      "text": "한국의 산업디자인 전자출원 비율은 99.4%로 중국보다 높다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“K-디자인, 세계 톱3 굳혔다”... 한국, 산업디자인 등록 세계 3위·전자출원 98.4%",
+        "url": "https://www.e-patentnews.com/15292"
+      },
+      "evidence": "중국 99.5%, 한국 98.4%"
+    },
+    {
+      "id": "q-gen-20260902-17",
+      "text": "2026년 8월 복무사항 마감일은 9월 7일 오후 6시다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "office",
+      "source": {
+        "title": "[공지] 2026년 8월 복무사항 마감 안내 (9. 7. 마감)",
+        "url": "https://gw.kipi.or.kr/bbs/read_bbs.aspx?bbs_num=1&sUser_num=0&sReply=0&sauthtype=&sfind=&sfindsdate=&sfindedate=&sfindtype=subject&sfiltertype=ALL&sresult=&sorderby=+ref+DESC%2c+re_step+ASC&num=13097&curPage=1"
+      },
+      "evidence": "ㅇ 마감일자 : 2026. 9. 7.(월) 18:00 마감"
+    },
+    {
+      "id": "q-gen-20260902-18",
+      "text": "2026년 공공기관 소프트웨어(SW) 관리 의무교육 기간은 9월 1일부터 10월 31일까지다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "office",
+      "source": {
+        "title": "[공지] 2026년 임직원 의무 교육 실시 안내 (가족친화/SW관리)",
+        "url": "https://gw.kipi.or.kr/bbs/read_bbs.aspx?bbs_num=1&sUser_num=0&sReply=0&sauthtype=&sfind=&sfindsdate=&sfindedate=&sfindtype=subject&sfiltertype=ALL&sresult=&sorderby=+ref+DESC%2c+re_step+ASC&num=13112&curPage=1"
+      },
+      "evidence": "교육 기간 : 2026. 9. 1.(화) ~ 10. 31.(토)"
+    },
+    {
+      "id": "q-gen-20260902-19",
+      "text": "2026년 가족친화 직장교육 기간은 9월 1일부터 10월 31일까지다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "office",
+      "source": {
+        "title": "[공지] 2026년 임직원 의무 교육 실시 안내 (가족친화/SW관리)",
+        "url": "https://gw.kipi.or.kr/bbs/read_bbs.aspx?bbs_num=1&sUser_num=0&sReply=0&sauthtype=&sfind=&sfindsdate=&sfindedate=&sfindtype=subject&sfiltertype=ALL&sresult=&sorderby=+ref+DESC%2c+re_step+ASC&num=13112&curPage=1"
+      },
+      "evidence": "교육 기간 : 2026. 9. 1.(화) ~ 9. 30.(수)"
+    },
+    {
+      "id": "q-gen-20260902-20",
+      "text": "법정의무교육 수강기간은 9월 30일까지로 연장됐다.",
+      "answer": "O",
+      "difficulty": "medium",
+      "category": "office",
+      "source": {
+        "title": "[공지] 2026년 법정의무교육 실시(~9/30일 까지 교육연장)",
+        "url": "https://gw.kipi.or.kr/bbs/read_bbs.aspx?bbs_num=1&sUser_num=0&sReply=0&sauthtype=&sfind=&sfindsdate=&sfindedate=&sfindtype=subject&sfiltertype=ALL&sresult=&sorderby=+ref+DESC%2c+re_step+ASC&num=13096&curPage=1"
+      },
+      "evidence": "법정의무교육 수강기간을 연장하여 9월 30일까지 온라인 교육을 제공합니다."
+    },
+    {
+      "id": "q-gen-20260902-21",
+      "text": "법정의무교육 예시에서 소정근로시간 8시간 기준 아동학대 예방교육은 2시간이다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "office",
+      "source": {
+        "title": "[공지] 2026년 법정의무교육 실시(~9/30일 까지 교육연장)",
+        "url": "https://gw.kipi.or.kr/bbs/read_bbs.aspx?bbs_num=1&sUser_num=0&sReply=0&sauthtype=&sfind=&sfindsdate=&sfindedate=&sfindtype=subject&sfiltertype=ALL&sresult=&sorderby=+ref+DESC%2c+re_step+ASC&num=13096&curPage=1"
+      },
+      "evidence": "소정근로시간 8시간: 4대 폭력 예방교육(4시간) + 아동학대 예방교육(1시간) + 통일교육(1시간) + 자살예방교육(1시간) = 총 7시간 이수"
+    },
+    {
+      "id": "q-gen-20260902-22",
+      "text": "법정의무교육은 재택근무를 통한 교육이수 후 남은 교육까지 포함해 9월 30일까지 8개과정을 모두 이수해야 한다.",
+      "answer": "O",
+      "difficulty": "medium",
+      "category": "office",
+      "source": {
+        "title": "[공지] 2026년 법정의무교육 실시(~9/30일 까지 교육연장)",
+        "url": "https://gw.kipi.or.kr/bbs/read_bbs.aspx?bbs_num=1&sUser_num=0&sReply=0&sauthtype=&sfind=&sfindsdate=&sfindedate=&sfindtype=subject&sfiltertype=ALL&sresult=&sorderby=+ref+DESC%2c+re_step+ASC&num=13096&curPage=1"
+      },
+      "evidence": "재택근무를 통한 교육이수 후 남은 교육에 대해 9월 30일까지 8개과정 교육을 모두 이수하셔야 합니다."
+    },
+    {
+      "id": "q-gen-20260902-23",
+      "text": "포르투갈의 2026년 1~7월 국내 특허·실용신안 출원은 총 851건으로 집계됐다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“특허출원 44% 뛰었지만 등록은 44% 급감”... 포르투갈 IP 시장, 엇갈린 성장 신호",
+        "url": "https://www.e-patentnews.com/15349"
+      },
+      "evidence": "올해 1~7월 INPI에 접수된 포르투갈 국내 특허·실용신안 출원은 총 851건으로 집계됐다."
+    },
+    {
+      "id": "q-gen-20260902-24",
+      "text": "포르투갈의 2026년 1~7월 국내 특허·실용신안 출원 증가율은 약 54.0%다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“특허출원 44% 뛰었지만 등록은 44% 급감”... 포르투갈 IP 시장, 엇갈린 성장 신호",
+        "url": "https://www.e-patentnews.com/15349"
+      },
+      "evidence": "증가율은 약 44.0%에 달한다."
+    },
+    {
+      "id": "q-gen-20260902-25",
+      "text": "포르투갈의 2026년 1~7월 국내 특허·실용신안 등록 건수는 92건으로 전년 동기보다 43.9% 감소했다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“특허출원 44% 뛰었지만 등록은 44% 급감”... 포르투갈 IP 시장, 엇갈린 성장 신호",
+        "url": "https://www.e-patentnews.com/15349"
+      },
+      "evidence": "같은 기간 등록된 국내 특허·실용신안은 92건으로 전년 동기 164건보다 43.9% 감소했다."
+    },
+    {
+      "id": "q-gen-20260902-26",
+      "text": "포르투갈의 2026년 1~7월 PCT·유럽특허(EP) 출원은 총 44건으로 집계됐다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“특허출원 44% 뛰었지만 등록은 44% 급감”... 포르투갈 IP 시장, 엇갈린 성장 신호",
+        "url": "https://www.e-patentnews.com/15349"
+      },
+      "evidence": "INPI를 통해 접수된 특허협력조약(PCT) 국제출원과 유럽특허(EP) 출원은 총 54건으로 전년 동기 44건보다 10건 늘었다."
+    },
+    {
+      "id": "q-gen-20260902-27",
+      "text": "포르투갈의 2026년 1~7월 국내 상표 및 기타 상업적 식별표지 출원은 총 1만4,789건으로 전년 동기보다 7.5% 증가했다.",
+      "answer": "O",
+      "difficulty": "medium",
+      "category": "ip-news",
+      "source": {
+        "title": "“특허출원 44% 뛰었지만 등록은 44% 급감”... 포르투갈 IP 시장, 엇갈린 성장 신호",
+        "url": "https://www.e-patentnews.com/15349"
+      },
+      "evidence": "2026년 1~7월 포르투갈 국내 상표 및 기타 상업적 식별표지(ODS) 출원은 총 1만4,789건으로 전년 동기 1만3,752건보다 7.5% 증가했다."
+    },
+    {
+      "id": "q-gen-20260902-28",
+      "text": "포르투갈의 국내 디자인 출원 물품 수는 전년 동기보다 13.8% 증가했다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“특허출원 44% 뛰었지만 등록은 44% 급감”... 포르투갈 IP 시장, 엇갈린 성장 신호",
+        "url": "https://www.e-patentnews.com/15349"
+      },
+      "evidence": "포르투갈 국내 디자인 출원에 포함된 물품 수는 총 390개로 전년 동기 622개보다 37.3% 감소했다."
+    },
+    {
+      "id": "q-gen-20260902-29",
+      "text": "「제7기 전문위원회 정책 이슈 종합 발표회」는 엘타워 9층 그레이스홀에서 열린다.",
+      "answer": "X",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "국가지식재산위원회, ‘제7기 전문위원회 정책 이슈 종합 발표회’ 개최",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21024&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "엘타워(서울 서초구) 6층 그레이스홀에서"
+    },
+    {
+      "id": "q-gen-20260902-30",
+      "text": "지식재산처가 개최한 ‘지식재산 거래 심층 대토론회’에는 수요·공급·중개·투자 기관 등 총 30여 명이 참석한다.",
+      "answer": "O",
+      "difficulty": "medium",
+      "category": "ip-news",
+      "source": {
+        "title": "지식재산 거래, 시장 중심으로 체계 전환한다!",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21022&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "이번 토론회에는 수요기업, 공급기관(대학·공공연), 중개기관·투자기관 등 총 30여 명이 참석한다."
+    },
+    {
+      "id": "q-gen-20260902-31",
+      "text": "저장성 이우시와 신장 이리하사크자치주의 시장감독관리국은 두건 디자인특허 침해 분쟁 3건을 성 간 온라인 방식으로 연계 심리했다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "“신장서 팔고 저장서 심리한다”... 중국, 4,000㎞ 넘은 특허분쟁 온라인으로 해결",
+        "url": "https://www.e-patentnews.com/15324"
+      },
+      "evidence": "신장 이리하사크자치주 시장감독관리국과 저장성 이우시 시장감독관리국이 액세서리용 두건 디자인특허 침해 분쟁 3건을 성 간 온라인 방식으로 연계 심리했다고 보도했다."
+    },
+    {
+      "id": "q-gen-20260902-32",
+      "text": "지식재산처와 한국개발연구원(KDI)의 업무협약은 2026년 9월 28일 체결됐다.",
+      "answer": "X",
+      "difficulty": "medium",
+      "category": "ip-news",
+      "source": {
+        "title": "아이디어·지식재산을 기반으로 진짜 성장을 도모한다!",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21017&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "지식재산처(처장 김용선)는 한국개발연구원(원장 김세직)과 8. 28.(금) 11시 한국지식재산센터(서울 강남구)에서"
+    },
+    {
+      "id": "q-gen-20260902-33",
+      "text": "‘지식재산 거래 네트워크(IP-LINK)’ 반도체·이차전지 행사에는 수요기업 60여 명과 기술이전 기관 43곳이 참여한다.",
+      "answer": "O",
+      "difficulty": "hard",
+      "category": "ip-news",
+      "source": {
+        "title": "잠자는 특허기술 깨울 ‘지식재산 거래 장터’ 열린다",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21016&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "행사 현장에는 필요한 기술을 탐색하는 수요기업 60여 명, 소유한 특허기술의 판매·홍보를 위한 43개 기술이전 기관(대학·공공연)"
+    },
+    {
+      "id": "q-gen-20260902-34",
+      "text": "지식재산처는 처장·국장급 간부를 대상으로 한 ‘바이브 코딩 워크숍’을 서울 강남구에서 개최했다.",
+      "answer": "X",
+      "difficulty": "medium",
+      "category": "ip-news",
+      "source": {
+        "title": "지식재산처, ‘직접 만들고 함께 쓰는’ 인공지능 업무혁신 본격화",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21013&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "국제지식재산연수원(대전시 유성구)에서 지식재산처장 및 국장급 간부를 대상으로"
     }
   ],
   "sudden": [
@@ -653,6 +1025,28 @@
         "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21005&sysCd=SCD02&aprchId=BUT0000029"
       },
       "evidence": "콘텐츠 속 가상 상호와 식품 등 창작물 무단 도용에 대응하기 위해, 대통령 소속 국가지식재산위원회는 8. 20.(목) 14시, 한국지식재산센터 5층(서울 강남구)에서 이춘무 지식재산전략기획단장 주재로 「K-콘텐츠 속 K-푸드 관련 지식재산 이슈 현장소통 간담회」를 개최한다고 밝혔다."
+    },
+    {
+      "id": "sd-gen-20260902-01",
+      "text": "\"지식재산처(처장 김용선)는 2027년도 예산안으로 ◯◯◯◯억원을 편성했다고 밝혔다.\" — ◯◯◯◯에 들어갈 숫자는?",
+      "answer": 7106,
+      "unit": "억원",
+      "source": {
+        "title": "아이디어와 지식재산이 성장자산이 되는 혁신생태계 조성",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21020&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "지식재산처(처장 김용선)는 2027년도 예산안으로 7,106억원을 편성했다고 밝혔다."
+    },
+    {
+      "id": "sd-gen-20260902-02",
+      "text": "\"올해로 ◯◯회를 맞는 PATINEX는 빠르게 변화하는 기술과 산업의 흐름을 살펴보고, 지식재산정보 활용을 통한 가치창출 전략을 공유하는 국제 박람회이다.\" — ◯◯에 들어갈 숫자는?",
+      "answer": 22,
+      "unit": "회",
+      "source": {
+        "title": "인공지능(AI) X 지식재산(IP), 기술혁신의 공식을 다시 쓰다!",
+        "url": "https://www.kipo.go.kr/ko/kpoBultnDetail.do?menuCd=SCD0200618&ntatcSeq=21023&sysCd=SCD02&aprchId=BUT0000029"
+      },
+      "evidence": "올해로 22회를 맞는 PATINEX는 빠르게 변화하는 기술과 산업의 흐름을 살펴보고, 지식재산정보 활용을 통한 가치창출 전략을 공유하는 국제 박람회이다."
     }
   ]
 }

@@ -65,6 +65,9 @@ const CONFIG = {
   gameMinute: Number(process.env.GAME_MINUTE ?? 55),
   preShowMs: 5 * 60000,
 
+  /** 본게임 3분 전(12:52)부터 체험 모드를 잠근다. 체험이 회차 직전 idle을 흔들 수 없게. */
+  demoLockoutMs: 3 * 60000,
+
   /**
    * 생존자가 이 수 미만이면 실시간 O/X 집계를 보내지 않는다.
    * 초반은 군중을 보고 눈치를 보지만 후반은 혼자 판단해야 한다.
@@ -325,6 +328,17 @@ setInterval(() => {
   if (prunePlayers(90000) > 0) pushState();
 }, 30000).unref();
 
+/**
+ * 대기실 "참가자" 표시용 headcount. game.players.size는 끊긴 지 얼마 안 돼
+ * 아직 정리되지 않은 유령 접속까지 세어, 혼자 들어와도 숫자가 부풀어 보인다.
+ * 지금 실제로 화면을 보고 있는 사람(SSE 연결)과 체험용 봇만 센다.
+ */
+function connectedCount() {
+  let n = 0;
+  for (const p of game.players.values()) if (p.isBot || p.res) n += 1;
+  return n;
+}
+
 function resetPlayerForRound(p) {
   p.alive = true;
   p.revives = p.isNew ? 1 : 0;
@@ -460,7 +474,8 @@ function publicState() {
     phaseEndsAt: game.phaseEndsAt,
     serverNow: Date.now(),
     nextGameAt: nextGameAt(),
-    joined: game.players.size,
+    demoLocked: demoLocked(),
+    joined: connectedCount(),
     alive: alivePlayers().length,
     qIndex: game.qIndex,
     qTotal: game.questions.length,
@@ -527,7 +542,7 @@ function pushTally() {
   const showTally = tallyVisible();
   const payload = {
     alive: alivePlayers().length,
-    joined: game.players.size,
+    joined: connectedCount(),
     tallyVisible: showTally,
     ...(showTally ? { ...tallyCounts(), choices: choiceMask() } : { o: null, x: null, decided: decidedMask() }),
   };
@@ -879,6 +894,13 @@ function nextGameAt(now = Date.now()) {
   return at;
 }
 
+/** 본게임 3분 전(12:52)부터 회차 시작(12:55)까지, 체험 모드를 잠근다. */
+function demoLocked(now = Date.now()) {
+  if (process.env.AUTO_START === '0') return false; // 개발·e2e 중에는 잠그지 않는다
+  const gameAt = nextGameAt(now);
+  return now >= gameAt - CONFIG.demoLockoutMs && now < gameAt;
+}
+
 /** 참여자·관전자 전원에게 같은 이벤트를 쏜다 (프리쇼 로고송 큐 등). */
 function broadcastEvent(event, data) {
   for (const p of game.players.values()) if (p.res) sseSend(p.res, event, data);
@@ -894,6 +916,12 @@ setInterval(() => {
   const gameAt = nextGameAt(now);
   const preAt = gameAt - CONFIG.preShowMs;
   if (now < preAt || now >= gameAt) return; // 프리쇼 창(12:50~12:55) 밖
+
+  // 12:52 — 체험 모드가 돌고 있으면 끊는다. 본게임 3분 전에는 체험이 idle을 흔들 수 없어야 한다.
+  if (game.demo && demoLocked(now)) {
+    log('체험 모드 강제 종료 — 정기 회차 3분 전');
+    resetGame();
+  }
 
   // 12:50 — 대기실을 연다. 체험 회차는 밀어내고, 이미 도는 실전 회차는 건드리지 않는다.
   if (autoOpenedFor !== gameAt) {
@@ -1027,6 +1055,16 @@ async function handler(req, res) {
     });
   }
 
+  // ---- 대기실 미리보기 — 정답을 가르는 진술문(text)이 아니라 그 근거가 된 원문
+  // 일부(evidence)만 보여준다. 실제로 출제될 문장을 미리 노출하면 안 된다 (인증 불필요).
+  if (p === '/api/preview-questions') {
+    const sample = [...BANK.pool]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 8)
+      .map((q) => ({ evidence: q.evidence, difficulty: q.difficulty }));
+    return sendJson(res, 200, { questions: sample });
+  }
+
   // ---- 전광판 SSE (인증 불필요)
   if (p === '/api/spectate') {
     sseOpen(res);
@@ -1136,6 +1174,9 @@ async function handler(req, res) {
   if (p === '/api/demo/start') {
     const player = game.players.get(body.token);
     if (!player) return sendJson(res, 401, { error: 'invalid token' });
+    if (demoLocked()) {
+      return sendJson(res, 409, { error: '월요일 12:52부터 본게임 완료까지 체험 모드가 비활성화됩니다.' });
+    }
     if (game.phase !== 'idle' && game.phase !== 'result' && !game.demo) {
       return sendJson(res, 409, { error: '실전 회차가 진행 중입니다.' });
     }
