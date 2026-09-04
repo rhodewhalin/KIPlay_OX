@@ -15,6 +15,7 @@
 
 <!-- ══════════════════════════════════ 로그인 -->
 <section class="screen" id="s-login">
+ <div class="login-body">
   <div class="clock" aria-label="12시 55분">12<span class="colon">:</span>55</div>
   <p class="tagline">점심시간 마지막 5분.<br>마지막 한 명이 남을 때까지.</p>
 
@@ -26,6 +27,7 @@
     </div>
     <button class="btn btn-primary" type="submit" id="join-btn">입장</button>
     <button class="btn" type="button" id="demo-open">혼자 체험해보기</button>
+    <p class="hint" style="text-align:center;margin-top:-6px">월요일 12:52부터 본게임 완료까지<br>체험 모드가 비활성화됩니다.</p>
     <button class="btn" type="button" id="spec-open">특허 보기</button>
     <p class="error" id="login-error" role="alert"></p>
     <p class="hint" id="login-hint">사번 5자리를 입력하세요.<br>2년차 미만이면 부활권 1개가 자동 지급·자동 사용됩니다.</p>
@@ -37,12 +39,11 @@
     <ul class="intro-list">
       <li>본 게임은 전사원이 참여하는 O·X 게임으로 한 주간의 사내 공지사항, 지재권 뉴스와 지재권 상식을 퀴즈로 푸는 전사 동시 참여형 서바이벌입니다.</li>
       <li>매주 월요일 12:55, 점심시간 마지막 5분 동안 열립니다.</li>
-      <li>문항마다 7초 안에 O 또는 X를 고르고, 틀리거나 답을 내지 않으면 그 자리에서 탈락합니다.</li>
-      <li>최대 10문항입니다. <b>5번째 문항부터는 전부 어려움</b>이고, 한 명이 남는 순간 끝납니다.</li>
       <li>2년차 미만 직원에게는 부활권이 회차당 1개 자동 지급되고, 틀리는 순간 자동으로 사용됩니다.</li>
       <li>마지막 한 명이 남을 때까지 —— 끝까지 갈리지 않으면 서든데스 숫자 문항으로 가립니다.</li>
     </ul>
   </section>
+ </div>
 </section>
 
 <!-- ══════════════════════════════════ 체험 모드 -->
@@ -83,6 +84,8 @@
 
 <!-- ══════════════════════════════════ 대기실 -->
 <section class="screen" id="s-lobby">
+ <div class="lobby-body">
+  <button class="btn-exit" type="button" id="lobby-exit">← 메인으로</button>
   <p class="greeting" id="lobby-greet" role="status" aria-live="polite"></p>
   <p class="hint" id="next-game" hidden style="text-align:center"></p>
   <div class="label" style="text-align:center">시작까지</div>
@@ -109,11 +112,30 @@
     O 또는 X를 7초 안에 고르세요.<br>답을 안 내면 오답으로 처리됩니다.
   </p>
 
-  <button class="btn" id="lobby-demo" hidden>혼자 체험해보기</button>
+  <!-- 문제 은행 미리보기 = 공보의 (56) 선행기술조사문헌 칸.
+       출제될 진술문이 아니라 그 근거가 된 원문 발췌를 싣는다. -->
+  <div class="q-carousel" id="q-carousel" hidden>
+    <div class="q-carousel-label">선행기술조사문헌</div>
+    <div class="q-carousel-viewport">
+      <div class="q-carousel-track" id="q-carousel-track">
+        <div class="q-carousel-card" data-slot="0"><i class="qc-n mono"></i><span class="qc-t"></span></div>
+        <div class="q-carousel-card is-center" data-slot="1"><i class="qc-n mono"></i><span class="qc-t"></span></div>
+        <div class="q-carousel-card" data-slot="2"><i class="qc-n mono"></i><span class="qc-t"></span></div>
+        <div class="q-carousel-card" data-slot="3"><i class="qc-n mono"></i><span class="qc-t"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" id="lobby-demo" hidden>혼자 체험해보기</button>
+    <button class="btn" id="lobby-demo-headcount" hidden>현재인원으로 체험</button>
+  </div>
+  <p class="hint" id="lobby-demo-hint" hidden style="text-align:center;max-width:32ch">월요일 12:52부터 본게임 완료까지 체험 모드가 비활성화됩니다.</p>
 
   <div class="lobby-links">
     <button type="button" id="narration-toggle" aria-pressed="true">나레이션 켜짐</button>
   </div>
+ </div>
 </section>
 
 <!-- ══════════════════════════════════ 문항 진행 -->

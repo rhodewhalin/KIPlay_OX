@@ -261,6 +261,17 @@ function fmtClock(ms) {
   return `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`;
 }
 
+const COUNTDOWN_SECONDS_FROM_MS = 10 * 60000; // 10분 전부터는 초 단위(mm:ss)
+
+/** 대기실 "시작까지" 표시. 10분 넘게 남았으면 "N시간 M분", 그 아래는 mm:ss. */
+function fmtCountdown(ms) {
+  if (ms <= COUNTDOWN_SECONDS_FROM_MS) return fmtClock(ms);
+  const totalMin = Math.floor(Math.max(0, ms) / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+}
+
 /** 문항 텍스트를 단어 단위 마스크 리빌로 세팅한다. 글자 단위로 쪼개지 않는다. */
 function splitWords(el, text) {
   el.setAttribute('aria-label', text);
@@ -301,7 +312,16 @@ function startTimerLoop() {
   const step = () => {
     rafId = requestAnimationFrame(step);
     const s = state.snap;
-    if (!s || !s.phaseEndsAt) return;
+    if (!s) return;
+
+    if (s.phase === 'idle') {
+      if (!s.nextGameAt) return;
+      const untilGame = s.nextGameAt - now();
+      $('lobby-countdown').textContent = fmtCountdown(untilGame);
+      $('lobby-countdown').classList.toggle('countdown-long', untilGame > COUNTDOWN_SECONDS_FROM_MS);
+      return;
+    }
+    if (!s.phaseEndsAt) return;
 
     const remain = s.phaseEndsAt - now();
 
@@ -372,7 +392,13 @@ function render(s) {
   $('lobby-revives').textContent = me.revives;
 
   body.dataset.demo = s.demo ? '1' : '0';
+  // 문항이 나가기 시작하면 퇴장문을 닫는다 — 그 뒤로 나가는 것은 탈락과 같다
+  $('lobby-exit').hidden = s.phase !== 'idle' && s.phase !== 'lobby';
   $('lobby-demo').hidden = s.phase !== 'idle';   // 진행 중에는 새 체험을 열지 않는다
+  $('lobby-demo').disabled = !!s.demoLocked;
+  $('lobby-demo-headcount').hidden = s.phase !== 'idle';
+  $('lobby-demo-headcount').disabled = !!s.demoLocked;
+  $('lobby-demo-hint').hidden = s.phase !== 'idle';
   $('rs-replay').hidden = !s.demo;
 
   renderBlindNote(s);
@@ -384,16 +410,22 @@ function render(s) {
   applyArmed(s);
 
   renderNextGame(s);
+  if (s.phase !== 'idle') stopPreviewCarousel();
 
   switch (s.phase) {
-    case 'idle':
+    case 'idle': {
       setScreen('lobby');
-      $('lobby-countdown').textContent = '--:--';
+      const untilGame = s.nextGameAt ? s.nextGameAt - now() : null;
+      $('lobby-countdown').textContent = untilGame != null ? fmtCountdown(untilGame) : '--:--';
+      $('lobby-countdown').classList.toggle('countdown-long', untilGame != null && untilGame > COUNTDOWN_SECONDS_FROM_MS);
+      renderPreviewCarousel(s);
       break;
+    }
 
     case 'lobby':
       setScreen('lobby');
       if (s.demo) Music.stopCrown();
+      $('lobby-countdown').classList.remove('countdown-long');
       $('lobby-countdown').textContent = fmtClock(s.phaseEndsAt - now());
       lastQIndex = -1;
       endingDone = false;   // 다음 회차의 엔딩을 위해 되돌린다
@@ -688,6 +720,7 @@ async function post(path, payload) {
 }
 
 function connect() {
+  if (!state.token) return; // 퇴장한 뒤에는 재접속 타이머가 깨어나도 붙지 않는다
   if (state.es) state.es.close();
   const es = new EventSource(`/api/stream?token=${encodeURIComponent(state.token)}`);
   state.es = es;
@@ -790,11 +823,114 @@ function renderNextGame(s) {
   el.hidden = false;
 }
 
+/**
+ * 대기실 캐러셀 — 미리 입장해 기다리는 동안, 문제 은행에서 무작위로 뽑은
+ * 진술문(정답은 뺀 채)을 5초마다 왼쪽으로 한 칸씩 흘려보여준다. 이번 회차에
+ * 실제로 나올 문항인지는 알 수 없다 — 그냥 형식에 익숙해지라고 보여주는 견본이다.
+ *
+ * DOM 카드는 늘 4장(이전·가운데·다음·대기), 뷰포트가 3장만 보여준다.
+ * 매 틱: 가운데 강조를 다음 칸으로 먼저 옮겨 함께 미끄러지게 한 뒤, 트랙을 한 칸
+ * 밀고, 애니메이션이 끝나면 자리를 순간 이동으로 되돌리며 인덱스를 새로 그린다 —
+ * 그 순간 화면에 보이는 내용은 그대로라 이음매가 안 보인다.
+ */
+const CAROUSEL_GAP = 7; // .q-carousel-track의 gap과 반드시 같아야 한다
+const carousel = { items: [], i: 0, timer: null, loading: false };
+
+async function loadPreviewQuestions() {
+  if (carousel.items.length || carousel.loading) return;
+  carousel.loading = true;
+  try {
+    const res = await fetch('/api/preview-questions');
+    const data = await res.json();
+    carousel.items = Array.isArray(data.questions) ? data.questions : [];
+  } catch {
+    carousel.items = []; // 네트워크 문제면 캐러셀 없이 조용히 넘어간다
+  }
+  carousel.loading = false;
+}
+
+function carouselIndexAt(offset) {
+  const n = carousel.items.length;
+  if (!n) return -1;
+  return (((carousel.i + offset) % n) + n) % n;
+}
+
+function paintCarouselCards() {
+  const track = $('q-carousel-track');
+  if (!track) return;
+  const cards = track.querySelectorAll('.q-carousel-card');
+  cards.forEach((card, slot) => {
+    const idx = carouselIndexAt(slot - 1); // 슬롯 0..3 = 이전·가운데·다음·대기
+    const q = idx < 0 ? null : carousel.items[idx];
+    // 문헌 번호는 내용에 붙는다 — 카드가 자리를 옮겨도 같은 원문이면 같은 번호다.
+    card.querySelector('.qc-n').textContent = q ? `문헌 ${pad2(idx + 1)}` : '';
+    card.querySelector('.qc-t').textContent = q ? q.evidence : '';
+  });
+}
+
+/**
+ * 자리를 순간이동으로 되돌린다. 트랙의 transform뿐 아니라 카드 하나하나도
+ * scale/opacity 트랜지션을 갖고 있어서, 그걸 끄지 않으면 is-center를 되돌릴 때
+ * 커졌다 작아지는 게 한 번 더 재생돼 "두 번 팝업"처럼 보인다.
+ */
+function resetCarouselTrack() {
+  const track = $('q-carousel-track');
+  if (!track) return;
+  const cards = [...track.querySelectorAll('.q-carousel-card')];
+  cards.forEach((card) => { card.style.transition = 'none'; });
+  track.style.transition = 'none';
+
+  cards.forEach((card, slot) => card.classList.toggle('is-center', slot === 1));
+  track.style.transform = 'translateX(0)';
+
+  void track.offsetWidth; // 리플로우를 강제해 transition:none을 확실히 먹인다
+  cards.forEach((card) => { card.style.transition = ''; });
+  track.style.transition = '';
+}
+
+function slideCarousel() {
+  const track = $('q-carousel-track');
+  if (!track || carousel.items.length < 2) return;
+
+  const cards = track.querySelectorAll('.q-carousel-card');
+  cards[1].classList.remove('is-center');
+  cards[2].classList.add('is-center'); // 다음 칸이 가운데로 자라며 함께 미끄러진다
+
+  const step = cards[0].getBoundingClientRect().width + CAROUSEL_GAP;
+  track.style.transform = `translateX(-${step}px)`;
+
+  setTimeout(() => {
+    carousel.i = (carousel.i + 1) % carousel.items.length;
+    resetCarouselTrack();
+    paintCarouselCards();
+  }, 500);
+}
+
+function renderPreviewCarousel() {
+  const box = $('q-carousel');
+  if (!box || carousel.timer) return; // 이미 돌고 있으면 그대로 둔다
+  loadPreviewQuestions().then(() => {
+    if (!carousel.items.length) return;
+    box.hidden = false;
+    resetCarouselTrack();
+    paintCarouselCards();
+    carousel.timer = setInterval(slideCarousel, 5000);
+  });
+}
+
+function stopPreviewCarousel() {
+  const box = $('q-carousel');
+  if (box) box.hidden = true;
+  if (carousel.timer) { clearInterval(carousel.timer); carousel.timer = null; }
+  resetCarouselTrack(); // 슬라이드 도중 멈췄을 경우를 대비해 자리를 되돌려둔다
+}
+
 function greet(name) {
-  const line = GREETINGS[Math.floor(Math.random() * GREETINGS.length)](name);
+  const template = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
   const el = $('lobby-greet');
-  if (el) el.textContent = line;
-  Sfx.say(line);
+  if (el) el.textContent = template(name);
+  // 이름이 "직원 26008"처럼 사번 그대로면, 화면은 원문 그대로 두고 음성만 자릿수로 읽는다.
+  Sfx.say(template(Sfx.spokenDigits(name)));
 }
 
 function setSendState(s, text) {
@@ -942,13 +1078,23 @@ $('lobby-demo').addEventListener('click', () => {
   setScreen('demo');
 });
 
-async function startDemo() {
+async function startDemo(botsOverride, announceText) {
+  const bots = typeof botsOverride === 'number' ? botsOverride : demoOpts.bots;
   $('demo-start').disabled = true;
   $('demo-error').textContent = '';
+
+  // 로봇이 함께 참여한다는 걸 시작 전에 먼저 알린다 — 화면 문구와 음성 둘 다.
+  const msg = announceText || `잠시 후 게임이 시작됩니다. 체험을 위해 로봇 ${bots}명이 함께 참여합니다.`;
+  const greetEl = $('lobby-greet');
+  if (greetEl) greetEl.textContent = msg;
+  Sfx.say(msg, { force: true });
 
   // 체험 대기실 = 로고송의 남은 시간. 곡이 끝나는 순간 1번 문항이 나간다.
   // 옵션 화면부터 흐르던 곡이면 그대로 타고, 이미 끝났으면 처음부터 다시 튼다.
   // 재생 자체가 막히면(자동재생 차단 등) 침묵 19초를 세우지 말고 3초로 바로 간다.
+  // 안내를 들을 시간(1.6초)만큼은 먼저 흘려보낸 뒤에 남은 시간을 잰다.
+  if (Music.jingleRemaining() == null) await Music.jingleStart();
+  await sleep(1600);
   let lobbySec = Music.jingleRemaining();
   if (lobbySec == null) lobbySec = await Music.jingleStart();
   if (lobbySec == null) lobbySec = 3;
@@ -966,7 +1112,7 @@ async function startDemo() {
     }
 
     const { ok, data } = await post('/api/demo/start', {
-      token: state.token, bots: demoOpts.bots, lobbySec,
+      token: state.token, bots, lobbySec,
     });
     if (!ok) throw new Error(data.error || '시작할 수 없습니다.');
     Sfx.select();
@@ -979,6 +1125,43 @@ async function startDemo() {
 
 $('demo-start').addEventListener('click', startDemo);
 $('rs-replay').addEventListener('click', startDemo);
+
+// 임시 버튼 — 설정 화면(역할·인원 고르기)을 건너뛰고, 지금 대기실에 이미 모인
+// 사람들 그대로에 로봇만 채워 바로 체험을 돌린다.
+const HEADCOUNT_DEMO_BOTS = 20;
+
+async function startHeadcountDemo() {
+  const btn = $('lobby-demo-headcount');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  await startDemo(
+    HEADCOUNT_DEMO_BOTS,
+    '잠시후 현재 대기실 인원으로 게임이 시작됩니다. 체험을 위해 로봇이 같이 참여합니다.',
+  );
+  btn.disabled = false;
+}
+
+$('lobby-demo-headcount').addEventListener('click', () => {
+  Sfx.unlock();
+  Music.enable();
+  startHeadcountDemo();
+});
+
+/**
+ * 대기실 → 메인. 스트림을 끊어 참가자 집계에서 즉시 빠진다(connectedCount가 SSE를 센다).
+ * 회차가 진행 중이면 나가도 자리가 사라지므로, 문항이 나가기 전에만 문을 열어둔다.
+ */
+$('lobby-exit').addEventListener('click', () => {
+  if (state.es) { state.es.close(); state.es = null; }
+  state.token = null;
+  state.snap = null;
+  sessionStorage.removeItem('t1255');
+  stopPreviewCarousel();
+  Music.stopAll();
+  $('login-error').textContent = '';
+  $('empId').value = '';
+  setScreen('login');
+});
 
 $('narration-toggle').addEventListener('click', (e) => {
   Sfx.narrationOn = !Sfx.narrationOn;

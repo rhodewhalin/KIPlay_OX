@@ -128,7 +128,11 @@
       // ── VIP 탈락
       if (!this.saidVipOut && s.vip && s.vip.alive === false && s.phase !== 'idle') {
         this.saidVipOut = true;
-        out.push({ text: `${s.vip.title || 'VIP'} ${s.vip.name}님이 탈락하셨습니다.`, tone: 'bad' });
+        out.push({
+          text: `${s.vip.title || 'VIP'} ${s.vip.name}님이 탈락하셨습니다.`,
+          say: `${s.vip.title || 'VIP'} ${Sfx.spokenDigits(s.vip.name)}님이 탈락하셨습니다.`,
+          tone: 'bad',
+        });
       }
 
       // ── 결승
@@ -145,7 +149,11 @@
         const r = s.result;
         out.push(
           r.champion
-            ? { text: `오늘의 챔피언은 ${r.champion.dept} ${r.champion.name}님입니다.`, tone: 'good' }
+            ? {
+                text: `오늘의 챔피언은 ${r.champion.dept} ${r.champion.name}님입니다.`,
+                say: `오늘의 챔피언은 ${r.champion.dept} ${Sfx.spokenDigits(r.champion.name)}님입니다.`,
+                tone: 'good',
+              }
             : { text: '전원 탈락으로 이번 회차의 챔피언은 없습니다.', tone: 'bad' },
         );
       }
