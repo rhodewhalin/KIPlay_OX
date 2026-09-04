@@ -1,4 +1,5 @@
 'use strict';
+const OX_BASE = location.pathname.startsWith('/games/') ? location.pathname.split('/').slice(0, 3).join('/') : ''; // KIPlay 허브 하위경로 배포 시 API 프리픽스
 
 /**
  * 12:55 — 전광판
@@ -406,7 +407,7 @@ function render(s) {
 // ─────────────────────────────────────────── 연결
 
 function connect() {
-  const es = new EventSource('/api/spectate');
+  const es = new EventSource(OX_BASE + '/api/spectate');
 
   es.addEventListener('state', (e) => render(JSON.parse(e.data)));
 

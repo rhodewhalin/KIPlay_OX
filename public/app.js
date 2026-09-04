@@ -1,4 +1,5 @@
 'use strict';
+const OX_BASE = location.pathname.startsWith('/games/') ? location.pathname.split('/').slice(0, 3).join('/') : ''; // KIPlay 허브 하위경로(/games/kiplay-ox) 배포 시 API 프리픽스 — 루트 배포(vercel 등)에선 빈 문자열
 
 /**
  * 12:55 — 참여자 클라이언트
@@ -706,7 +707,7 @@ function dropSession(reason) {
 }
 
 async function post(path, payload) {
-  const res = await fetch(path, {
+  const res = await fetch(OX_BASE + path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -722,7 +723,7 @@ async function post(path, payload) {
 function connect() {
   if (!state.token) return; // 퇴장한 뒤에는 재접속 타이머가 깨어나도 붙지 않는다
   if (state.es) state.es.close();
-  const es = new EventSource(`/api/stream?token=${encodeURIComponent(state.token)}`);
+  const es = new EventSource(OX_BASE + `/api/stream?token=${encodeURIComponent(state.token)}`);
   state.es = es;
 
   es.addEventListener('state', (e) => { state.retry = 0; render(JSON.parse(e.data)); });
@@ -840,7 +841,7 @@ async function loadPreviewQuestions() {
   if (carousel.items.length || carousel.loading) return;
   carousel.loading = true;
   try {
-    const res = await fetch('/api/preview-questions');
+    const res = await fetch(OX_BASE + '/api/preview-questions');
     const data = await res.json();
     carousel.items = Array.isArray(data.questions) ? data.questions : [];
   } catch {
