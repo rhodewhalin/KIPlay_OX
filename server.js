@@ -334,20 +334,33 @@ function enterPlayer(player) {
   }
 }
 
-function resolveHubGuest(body) {
-  if (body.mode !== 'kiplay-profile' && !body.playerId) return null;
-
+function resolveHubIdentity(body) {
+  // 허브 신원은 명시적 kiplay-profile 모드일 때만 인정 — 사번 로그인에 playerId만 끼워넣는 스푸핑 축소(실클라는 항상 mode 전송)
+  if (body.mode !== 'kiplay-profile') return null;
   const playerId = String(body.playerId || '').trim();
   if (!playerId || playerId.length > 128) return { error: 'hub playerId is required' };
 
   const rawName = String(body.name || '').trim();
   const name = (rawName || '참가자').slice(0, 40);
 
+  return { playerId, name };
+}
+
+function attachHubIdentity(player, hub) {
+  if (!hub || hub.error) return;
+  player.playerId = hub.playerId;
+  player.hubName = hub.name;
+}
+
+function resolveHubGuest(body) {
+  const hub = resolveHubIdentity(body);
+  if (!hub || hub.error) return hub;
+
   return {
     emp: {
       empId: null,
-      playerId,
-      name,
+      playerId: hub.playerId,
+      name: hub.name,
       dept: '스페셜 게스트',
       div: 'guest',
       title: null,
@@ -658,7 +671,12 @@ function postHubScore(payload) {
   send.catch((err) => log(`hub score bridge error · ${payload.playerId} · ${err.message}`));
 }
 
-function bridgeHubScores() {
+function bridgeHubScores(isDemo = game.demo) {
+  if (isDemo) {
+    log(`hub score bridge skipped · demo round ${game.round}`);
+    return;
+  }
+
   for (const p of game.players.values()) {
     if (p.isBot || !p.playerId) continue;
     postHubScore({
@@ -919,6 +937,7 @@ function resolveSudden() {
 
 function finish(champion) {
   clearTimers();
+  const finishedDemo = game.demo;
   game.phase = 'result';
   game.phaseEndsAt = 0;
 
@@ -979,7 +998,7 @@ function finish(champion) {
   };
   game.suddenResult = null;
 
-  bridgeHubScores();
+  bridgeHubScores(finishedDemo);
   pushState();
   log(`round ${game.round} 종료 · 챔피언 ${champion ? champion.name : '없음'}`);
 }
@@ -1201,13 +1220,16 @@ async function handler(req, res) {
 
   // ---- 로그인
   if (p === '/api/login') {
-    const guest = resolveHubGuest(body);
-    if (guest) {
+    const hub = resolveHubIdentity(body);
+    if (hub && hub.error) return sendJson(res, 400, { error: hub.error });
+    const empIdInput = String(body.empId || '').trim();
+
+    if (!empIdInput && hub) {
+      const guest = resolveHubGuest(body);
       if (guest.error) return sendJson(res, 400, { error: guest.error });
 
       const prev = game.byPlayerId.get(guest.emp.playerId);
       if (prev && game.players.has(prev)) kickExistingPlayer(prev);
-
       const token = crypto.randomUUID();
       const player = newPlayer(guest.emp, token);
       enterPlayer(player);
@@ -1230,24 +1252,36 @@ async function handler(req, res) {
       });
     }
 
-    const emp = resolveEmployee(body.empId);
+    const emp = resolveEmployee(empIdInput);
     if (!emp) return sendJson(res, 400, { error: `사번은 ${ID.digits}자리 숫자입니다.` });
 
     // 동시 세션 1개 제한 (PRD 7.6)
     const prev = game.byEmpId.get(emp.empId);
     if (prev && game.players.has(prev)) kickExistingPlayer(prev);
+    if (hub) {
+      const prevHub = game.byPlayerId.get(hub.playerId);
+      if (prevHub && prevHub !== prev && game.players.has(prevHub)) kickExistingPlayer(prevHub);
+    }
 
     const token = crypto.randomUUID();
     const player = newPlayer(emp, token);
+    attachHubIdentity(player, hub);
     enterPlayer(player);
 
     game.players.set(token, player);
     game.byEmpId.set(emp.empId, token);
+    if (player.playerId) game.byPlayerId.set(player.playerId, token);
     pushState();
 
     return sendJson(res, 200, {
       token,
-      user: { ...emp, isNew: player.isNew, revives: player.revives, spectatorOnly: !player.alive },
+      user: {
+        ...emp,
+        playerId: player.playerId || null,
+        isNew: player.isNew,
+        revives: player.revives,
+        spectatorOnly: !player.alive,
+      },
     });
   }
 

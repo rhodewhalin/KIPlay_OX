@@ -3,7 +3,7 @@ const OX_BASE = location.pathname.startsWith('/games/') ? location.pathname.spli
 const HUB_PARAMS = new URLSearchParams(location.search);
 const HUB_PLAYER_ID = (HUB_PARAMS.get('kip_pid') || '').trim();
 const HUB_PLAYER_NAME = (HUB_PARAMS.get('kip_name') || '').trim();
-const HUB_LOGIN = HUB_PLAYER_ID
+const HUB_IDENTITY = HUB_PLAYER_ID
   ? { mode: 'kiplay-profile', playerId: HUB_PLAYER_ID, name: HUB_PLAYER_NAME || '참가자' }
   : null;
 
@@ -653,6 +653,7 @@ function renderResult(s, me) {
   if (!r) return;
 
   renderReview(r);
+  $('rs-virtual-score').hidden = !s.demo;
 
   if (r.champion) {
     $('rs-crown').textContent = '👑';
@@ -787,7 +788,8 @@ $('login-form').addEventListener('submit', async (e) => {
   $('login-error').textContent = '';
   $('join-btn').disabled = true;
 
-  const { ok, data } = await post('/api/login', { empId: $('empId').value.trim() });
+  const loginBody = { empId: $('empId').value.trim(), ...(HUB_IDENTITY || {}) };
+  const { ok, data } = await post('/api/login', loginBody);
   $('join-btn').disabled = false;
 
   if (!ok) { $('login-error').textContent = data.error || '입장할 수 없습니다.'; return; }
@@ -1194,23 +1196,10 @@ const fixtureName = new URLSearchParams(location.search).get('screen');
 // 링크를 열면 1초 뒤 개장 로고송을 시도한다. 픽스처 화면은 개발용이라 조용히 둔다.
 if (!fixtureName) Music.autoJingle(1000);
 
-async function autoLoginFromHub() {
-  sessionStorage.removeItem('t1255');
-  state.token = null;
-  $('join-btn').disabled = true;
-  $('login-error').textContent = '';
-  if ($('empId')) {
-    $('empId').required = false;
-    $('empId').value = '';
-  }
-
-  const { ok, data } = await post('/api/login', HUB_LOGIN);
-  if (!ok) {
-    $('join-btn').disabled = false;
-    $('login-error').textContent = data.error || '입장할 수 없습니다.';
-    return;
-  }
-  completeLogin(data);
+if (HUB_IDENTITY && $('empId')) {
+  $('empId').required = false;
+  $('empId').placeholder = '선택 입력';
+  $('login-hint').innerHTML = '사번을 입력하면 2년차 미만 부활권을 받을 수 있습니다.<br>입력하지 않아도 허브 프로필로 참가합니다.';
 }
 
 // 저장된 토큰이 아직 살아 있는지 먼저 확인한다.
@@ -1218,8 +1207,9 @@ async function autoLoginFromHub() {
 // 픽스처로 화면만 보는 중이면 건드리지 않는다.
 (async () => {
   if (fixtureName) return;
-  if (HUB_LOGIN) {
-    await autoLoginFromHub();
+  if (HUB_IDENTITY) {
+    sessionStorage.removeItem('t1255');
+    state.token = null;
     return;
   }
   if (!state.token) return;

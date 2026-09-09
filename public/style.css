@@ -1258,6 +1258,19 @@ body[data-side-notes="1"] .legend { display: none; }
 
 .champ .dept { color: var(--ink-3); font-size: 14px; }
 
+.virtual-score {
+  margin: 0 auto var(--sp-1);
+  max-width: 38ch;
+  padding: 10px 14px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
+
 .rank-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 
 .rank-row {
