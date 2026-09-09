@@ -12,6 +12,7 @@
  */
 
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -275,6 +276,7 @@ const game = {
 
   players: new Map(),   // token -> player
   byEmpId: new Map(),   // empId -> token (동시 세션 1개 제한)
+  byPlayerId: new Map(), // hub playerId -> token (허브 iframe 동시 세션 1개 제한)
   spectators: new Set(),
 
   lastReveal: null,
@@ -305,6 +307,57 @@ function newPlayer(emp, token) {
   };
 }
 
+function removePlayer(token) {
+  const p = game.players.get(token);
+  if (!p) return;
+  game.players.delete(token);
+  if (p.empId && game.byEmpId.get(p.empId) === token) game.byEmpId.delete(p.empId);
+  if (p.playerId && game.byPlayerId.get(p.playerId) === token) game.byPlayerId.delete(p.playerId);
+}
+
+function kickExistingPlayer(token) {
+  const old = game.players.get(token);
+  if (!old) return;
+  if (old.res && !old.res.writableEnded) {
+    sseSend(old.res, 'kicked', { reason: '다른 기기에서 접속했습니다.' });
+    old.res.end();
+  }
+  removePlayer(token);
+}
+
+function enterPlayer(player) {
+  if (game.phase !== 'idle' && game.phase !== 'lobby') {
+    player.alive = false; // 진행 중 입장은 관전만 (PRD 5.1 입장 마감)
+    player.eliminatedAt = -1;
+  } else {
+    player.points = POINTS.join;
+  }
+}
+
+function resolveHubGuest(body) {
+  if (body.mode !== 'kiplay-profile' && !body.playerId) return null;
+
+  const playerId = String(body.playerId || '').trim();
+  if (!playerId || playerId.length > 128) return { error: 'hub playerId is required' };
+
+  const rawName = String(body.name || '').trim();
+  const name = (rawName || '참가자').slice(0, 40);
+
+  return {
+    emp: {
+      empId: null,
+      playerId,
+      name,
+      dept: '스페셜 게스트',
+      div: 'guest',
+      title: null,
+      vip: false,
+      years: CONFIG.newbieYears,
+      guest: true,
+    },
+  };
+}
+
 /**
  * 끊긴 참여자를 정리한다.
  * 이게 없으면 폰을 닫은 사람이 영구히 참가자로 집계되어 참여율 지표가 오염된다.
@@ -316,8 +369,7 @@ function prunePlayers(maxIdleMs = 0) {
   for (const [token, p] of game.players) {
     if (p.isBot) continue; // 봇은 회차 리셋에서 별도로 정리한다
     if (p.res || !p.disconnectedAt || p.disconnectedAt > cutoff) continue;
-    game.players.delete(token);
-    if (game.byEmpId.get(p.empId) === token) game.byEmpId.delete(p.empId);
+    removePlayer(token);
     removed += 1;
   }
   return removed;
@@ -501,6 +553,7 @@ function personalState(p) {
     ...publicState(),
     me: {
       empId: p.empId,
+      playerId: p.playerId || null,
       name: p.name,
       dept: p.dept,
       div: p.div,
@@ -548,6 +601,74 @@ function pushTally() {
   };
   for (const p of game.players.values()) if (p.res) sseSend(p.res, 'tally', payload);
   for (const res of game.spectators) sseSend(res, 'tally', payload);
+}
+
+function hubScoreEndpoint() {
+  const base = String(process.env.HUB_SCORE_URL || '').replace(/\/+$/, '');
+  if (!base || !process.env.KIPLAY_SERVICE_TOKEN) return null;
+  return `${base}/api/scores/server`;
+}
+
+function postJsonWithHttp(url, payload, token) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const data = JSON.stringify(payload);
+    const transport = u.protocol === 'http:' ? http : https;
+    const req = transport.request(
+      u,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(data),
+          Authorization: `Bearer ${token}`,
+        },
+      },
+      (res) => {
+        res.resume();
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) resolve();
+          else reject(new Error(`hub score POST failed with ${res.statusCode}`));
+        });
+      },
+    );
+    req.on('error', reject);
+    req.end(data);
+  });
+}
+
+function postHubScore(payload) {
+  const url = hubScoreEndpoint();
+  const token = process.env.KIPLAY_SERVICE_TOKEN;
+  if (!url || !token) return;
+
+  const send = typeof fetch === 'function'
+    ? fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }).then((res) => {
+        if (!res.ok) throw new Error(`hub score POST failed with ${res.status}`);
+      })
+    : postJsonWithHttp(url, payload, token);
+
+  send.catch((err) => log(`hub score bridge error · ${payload.playerId} · ${err.message}`));
+}
+
+function bridgeHubScores() {
+  for (const p of game.players.values()) {
+    if (p.isBot || !p.playerId) continue;
+    postHubScore({
+      gameId: 'kiplay-ox',
+      sessionId: `${game.round}:${p.playerId}`,
+      playerId: p.playerId,
+      player: p.name,
+      score: p.points,
+    });
+  }
 }
 
 // ---------------------------------------------------------------- 상태 기계
@@ -858,6 +979,7 @@ function finish(champion) {
   };
   game.suddenResult = null;
 
+  bridgeHubScores();
   pushState();
   log(`round ${game.round} 종료 · 챔피언 ${champion ? champion.name : '없음'}`);
 }
@@ -1079,28 +1201,45 @@ async function handler(req, res) {
 
   // ---- 로그인
   if (p === '/api/login') {
+    const guest = resolveHubGuest(body);
+    if (guest) {
+      if (guest.error) return sendJson(res, 400, { error: guest.error });
+
+      const prev = game.byPlayerId.get(guest.emp.playerId);
+      if (prev && game.players.has(prev)) kickExistingPlayer(prev);
+
+      const token = crypto.randomUUID();
+      const player = newPlayer(guest.emp, token);
+      enterPlayer(player);
+
+      game.players.set(token, player);
+      game.byPlayerId.set(player.playerId, token);
+      pushState();
+
+      return sendJson(res, 200, {
+        token,
+        user: {
+          name: player.name,
+          playerId: player.playerId,
+          dept: player.dept,
+          div: player.div,
+          isNew: player.isNew,
+          revives: player.revives,
+          spectatorOnly: !player.alive,
+        },
+      });
+    }
+
     const emp = resolveEmployee(body.empId);
     if (!emp) return sendJson(res, 400, { error: `사번은 ${ID.digits}자리 숫자입니다.` });
 
     // 동시 세션 1개 제한 (PRD 7.6)
     const prev = game.byEmpId.get(emp.empId);
-    if (prev && game.players.has(prev)) {
-      const old = game.players.get(prev);
-      if (old.res && !old.res.writableEnded) {
-        sseSend(old.res, 'kicked', { reason: '다른 기기에서 접속했습니다.' });
-        old.res.end();
-      }
-      game.players.delete(prev);
-    }
+    if (prev && game.players.has(prev)) kickExistingPlayer(prev);
 
     const token = crypto.randomUUID();
     const player = newPlayer(emp, token);
-    if (game.phase !== 'idle' && game.phase !== 'lobby') {
-      player.alive = false; // 진행 중 입장은 관전만 (PRD 5.1 입장 마감)
-      player.eliminatedAt = -1;
-    } else {
-      player.points = POINTS.join;
-    }
+    enterPlayer(player);
 
     game.players.set(token, player);
     game.byEmpId.set(emp.empId, token);
@@ -1123,6 +1262,7 @@ async function handler(req, res) {
       ok: true,
       user: {
         empId: player.empId, name: player.name, dept: player.dept, div: player.div,
+        playerId: player.playerId || null,
         years: player.years, isNew: player.isNew, vip: player.vip, revives: player.revives,
       },
     });

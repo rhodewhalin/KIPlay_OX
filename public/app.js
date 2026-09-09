@@ -1,5 +1,11 @@
 'use strict';
 const OX_BASE = location.pathname.startsWith('/games/') ? location.pathname.split('/').slice(0, 3).join('/') : ''; // KIPlay 허브 하위경로(/games/kiplay-ox) 배포 시 API 프리픽스 — 루트 배포(vercel 등)에선 빈 문자열
+const HUB_PARAMS = new URLSearchParams(location.search);
+const HUB_PLAYER_ID = (HUB_PARAMS.get('kip_pid') || '').trim();
+const HUB_PLAYER_NAME = (HUB_PARAMS.get('kip_name') || '').trim();
+const HUB_LOGIN = HUB_PLAYER_ID
+  ? { mode: 'kiplay-profile', playerId: HUB_PLAYER_ID, name: HUB_PLAYER_NAME || '참가자' }
+  : null;
 
 /**
  * 12:55 — 참여자 클라이언트
@@ -766,6 +772,14 @@ function connect() {
 
 // ═══════════════════════════════════════════════ 입력
 
+async function completeLogin(data) {
+  state.token = data.token;
+  sessionStorage.setItem('t1255', data.token);
+  Sfx.select();
+  greet(data.user.name);
+  connect();
+}
+
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   Sfx.unlock();                       // 오디오는 첫 사용자 제스처에서 해제한다
@@ -778,11 +792,7 @@ $('login-form').addEventListener('submit', async (e) => {
 
   if (!ok) { $('login-error').textContent = data.error || '입장할 수 없습니다.'; return; }
 
-  state.token = data.token;
-  sessionStorage.setItem('t1255', data.token);
-  Sfx.select();
-  greet(data.user.name);
-  connect();
+  completeLogin(data);
 });
 
 /**
@@ -1106,9 +1116,7 @@ async function startDemo(botsOverride, announceText) {
     if (!state.token) {
       const { ok, data } = await post('/api/login', { empId: demoEmpId(demoOpts.role) });
       if (!ok) throw new Error(data.error || '입장에 실패했습니다.');
-      state.token = data.token;
-      sessionStorage.setItem('t1255', data.token);
-      connect();
+      completeLogin(data);
       await sleep(250); // 스트림이 열릴 때까지 잠깐 기다린다
     }
 
@@ -1186,11 +1194,35 @@ const fixtureName = new URLSearchParams(location.search).get('screen');
 // 링크를 열면 1초 뒤 개장 로고송을 시도한다. 픽스처 화면은 개발용이라 조용히 둔다.
 if (!fixtureName) Music.autoJingle(1000);
 
+async function autoLoginFromHub() {
+  sessionStorage.removeItem('t1255');
+  state.token = null;
+  $('join-btn').disabled = true;
+  $('login-error').textContent = '';
+  if ($('empId')) {
+    $('empId').required = false;
+    $('empId').value = '';
+  }
+
+  const { ok, data } = await post('/api/login', HUB_LOGIN);
+  if (!ok) {
+    $('join-btn').disabled = false;
+    $('login-error').textContent = data.error || '입장할 수 없습니다.';
+    return;
+  }
+  completeLogin(data);
+}
+
 // 저장된 토큰이 아직 살아 있는지 먼저 확인한다.
 // 죽은 토큰으로 스트림을 열면 계속 재접속만 시도하며 화면이 멈춘 것처럼 보인다.
 // 픽스처로 화면만 보는 중이면 건드리지 않는다.
 (async () => {
-  if (!state.token || fixtureName) return;
+  if (fixtureName) return;
+  if (HUB_LOGIN) {
+    await autoLoginFromHub();
+    return;
+  }
+  if (!state.token) return;
   const { ok } = await post('/api/session', { token: state.token });
   if (ok) connect();
 })();
